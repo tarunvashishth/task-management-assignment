@@ -11,6 +11,7 @@ interface TokenPayload {
   id: string;
   email: string;
   jti: string;
+  refresh_jti: string;
 }
 
 interface RefreshPayload {
@@ -44,7 +45,7 @@ class AuthService {
     const refreshJti = uuidv4();
 
     const accessToken = jwt.sign(
-      { id: userId, email, jti: accessJti } as TokenPayload,
+      { id: userId, email, jti: accessJti, refresh_jti: refreshJti } as TokenPayload,
       this.accessSecret,
       { expiresIn: this.accessExpires } as jwt.SignOptions,
     );
@@ -102,8 +103,9 @@ class AuthService {
     return { user, accessToken, refreshToken };
   }
 
-  logout(jti: string): void {
+  logout(jti: string, refreshJti: string): void {
     jtiBlocklist.add(jti);
+    jtiBlocklist.add(refreshJti);
   }
 
   isBlocked(jti: string): boolean {

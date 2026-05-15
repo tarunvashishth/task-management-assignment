@@ -23,7 +23,7 @@ export interface ITask extends Document {
 }
 
 export interface AuthRequest extends Request {
-  user?: { id: string; email: string; jti: string };
+  user?: { id: string; email: string; jti: string; refresh_jti: string };
 }
 
 export interface TaskFilters {

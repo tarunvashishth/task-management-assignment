@@ -127,7 +127,7 @@ router.post('/login', authRateLimit, async (req: Request, res: Response, next: N
  */
 router.post('/logout', authenticate, (req: AuthRequest, res: Response, next: NextFunction) => {
   try {
-    authService.logout(req.user!.jti);
+    authService.logout(req.user!.jti, req.user!.refresh_jti);
     res.clearCookie('access_token');
     res.clearCookie('refresh_token', { path: '/auth/refresh' });
     res.json({ message: 'Logged out successfully' });
@@ -154,6 +154,11 @@ router.post('/refresh', async (req: Request, res: Response, next: NextFunction) 
     }
 
     const payload = authService.verifyRefreshToken(token);
+
+    if (authService.isBlocked(payload.jti)) {
+      throw new AppError(401, ErrorCodes.UNAUTHORIZED, 'Refresh token has been revoked');
+    }
+
     const user = await authService.getUserById(payload.id);
     if (!user) {
       throw new AppError(401, ErrorCodes.UNAUTHORIZED, 'User not found');

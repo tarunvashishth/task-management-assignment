@@ -10,6 +10,19 @@ const router = Router();
 
 router.use(authenticate);
 
+const listTasksQuerySchema = z.object({
+  status: z.enum(['pending', 'in-progress', 'completed']).optional(),
+  assignee_id: z.string().optional(),
+  from: z.string().optional(),
+  to: z.string().optional(),
+  cursor: z.string().optional(),
+  limit: z.coerce.number().int().min(1).max(100).optional(),
+});
+
+const assignSchema = z.object({
+  assignee_id: z.string().nullable().optional(),
+});
+
 const createTaskSchema = z.object({
   title: z.string().min(1, 'Title is required').max(200),
   description: z.string().max(2000).optional(),
@@ -59,15 +72,12 @@ const updateTaskSchema = z.object({
  */
 router.get('/', async (req: AuthRequest, res: Response, next: NextFunction) => {
   try {
-    const { status, assignee_id, from, to, cursor, limit } = req.query;
-    const result = await taskService.getVisibleTasks(req.user!.id, {
-      status: status as string | undefined,
-      assignee_id: assignee_id as string | undefined,
-      from: from as string | undefined,
-      to: to as string | undefined,
-      cursor: cursor as string | undefined,
-      limit: limit ? parseInt(limit as string, 10) : undefined,
-    });
+    const parsed = listTasksQuerySchema.safeParse(req.query);
+    if (!parsed.success) {
+      const firstError = parsed.error.errors[0];
+      throw new AppError(422, ErrorCodes.VALIDATION_ERROR, firstError.message, firstError.path[0] as string);
+    }
+    const result = await taskService.getVisibleTasks(req.user!.id, parsed.data);
     res.json(result);
   } catch (err) {
     next(err);
@@ -249,7 +259,12 @@ router.delete('/:id', async (req: AuthRequest, res: Response, next: NextFunction
  */
 router.patch('/:id/assign', async (req: AuthRequest, res: Response, next: NextFunction) => {
   try {
-    const { assignee_id } = req.body as { assignee_id?: string | null };
+    const parsed = assignSchema.safeParse(req.body);
+    if (!parsed.success) {
+      const firstError = parsed.error.errors[0];
+      throw new AppError(422, ErrorCodes.VALIDATION_ERROR, firstError.message, firstError.path[0] as string);
+    }
+    const { assignee_id } = parsed.data;
 
     const { task, previousAssigneeId } = await taskService.assignTask(
       req.params.id,

@@ -47,6 +47,9 @@ class TaskService {
 
     if (filters.cursor) {
       const decodedId = this.decodeCursor(filters.cursor);
+      if (!Types.ObjectId.isValid(decodedId)) {
+        throw new AppError(422, ErrorCodes.VALIDATION_ERROR, 'Invalid cursor');
+      }
       query._id = { $lt: new Types.ObjectId(decodedId) };
     }
 

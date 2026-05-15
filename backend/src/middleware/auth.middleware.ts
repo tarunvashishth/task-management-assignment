@@ -30,7 +30,7 @@ export function authenticate(req: AuthRequest, res: Response, next: NextFunction
       throw new AppError(401, ErrorCodes.UNAUTHORIZED, 'Token has been revoked');
     }
 
-    req.user = { id: payload.id, email: payload.email, jti: payload.jti };
+    req.user = { id: payload.id, email: payload.email, jti: payload.jti, refresh_jti: payload.refresh_jti };
     next();
   } catch (err) {
     next(err);
@@ -44,7 +44,7 @@ export function optionalAuthenticate(req: AuthRequest, _res: Response, next: Nex
   try {
     const payload = authService.verifyAccessToken(token);
     if (!authService.isBlocked(payload.jti)) {
-      req.user = { id: payload.id, email: payload.email, jti: payload.jti };
+      req.user = { id: payload.id, email: payload.email, jti: payload.jti, refresh_jti: payload.refresh_jti };
     }
   } catch {
     // Silently ignore invalid tokens in optional mode

@@ -65,15 +65,17 @@ class SocketService {
 
   emitTaskUpdated(task: ITask): void {
     if (!this.io) return;
-    this.io.to(`task:${task._id.toString()}`).emit('task:updated', { task });
+    const room = `task:${task._id.toString()}`;
+    this.io.to(room).emit('task:updated', { task });
 
-    // Also emit to creator/assignee who may not have joined the room
+    // Also emit directly to creator/assignee only if they haven't joined the room
+    // (avoids double delivery to users who are currently viewing the task detail)
     const creatorId = task.creator_id.toString();
     const assigneeId = task.assignee_id?.toString();
 
-    this.emitToUser(creatorId, 'task:updated', { task });
+    this.emitToUserIfNotInRoom(creatorId, room, 'task:updated', { task });
     if (assigneeId && assigneeId !== creatorId) {
-      this.emitToUser(assigneeId, 'task:updated', { task });
+      this.emitToUserIfNotInRoom(assigneeId, room, 'task:updated', { task });
     }
   }
 
@@ -102,6 +104,17 @@ class SocketService {
     if (!socketIds) return;
     for (const socketId of socketIds) {
       this.io.to(socketId).emit(event, data);
+    }
+  }
+
+  private emitToUserIfNotInRoom(userId: string, room: string, event: string, data: unknown): void {
+    const socketIds = userSocketMap.get(userId);
+    if (!socketIds) return;
+    for (const socketId of socketIds) {
+      const socket = this.io.sockets.sockets.get(socketId);
+      if (socket && !socket.rooms.has(room)) {
+        socket.emit(event, data);
+      }
     }
   }
 }
