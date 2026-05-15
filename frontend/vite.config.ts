@@ -9,6 +9,10 @@ export default defineConfig({
       '/auth': 'http://localhost:3001',
       '/tasks': 'http://localhost:3001',
       '/users': 'http://localhost:3001',
+      '/socket.io': {
+        target: 'http://localhost:3001',
+        ws: true,
+      },
     },
   },
 });
