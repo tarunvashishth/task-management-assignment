@@ -9,7 +9,9 @@ const client = axios.create({
 client.interceptors.response.use(
   (res) => res,
   (err) => {
-    if (err.response?.status === 401 && !window.location.pathname.includes('/login')) {
+    const isAuthCheck = err.config?.url?.includes('/auth/me');
+    const isAuthPage = window.location.pathname.includes('/login') || window.location.pathname.includes('/register');
+    if (err.response?.status === 401 && !isAuthCheck && !isAuthPage) {
       window.location.href = '/login';
     }
     return Promise.reject(err);
