@@ -1,16 +1,20 @@
+
 import { defineConfig } from 'vite';
 import react from '@vitejs/plugin-react';
+
+// Read backend URL from environment variable, fallback to localhost
+const backendUrl = process.env.VITE_BACKEND_URL || 'http://localhost:3001';
 
 export default defineConfig({
   plugins: [react()],
   server: {
     port: 5173,
     proxy: {
-      '/auth': 'http://localhost:3001',
-      '/tasks': 'http://localhost:3001',
-      '/users': 'http://localhost:3001',
+      '/auth': backendUrl,
+      '/tasks': backendUrl,
+      '/users': backendUrl,
       '/socket.io': {
-        target: 'http://localhost:3001',
+        target: backendUrl,
         ws: true,
       },
     },
