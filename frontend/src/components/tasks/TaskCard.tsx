@@ -34,7 +34,8 @@ function getEmail(val: string | User | undefined): string {
 function getId(val: string | User | undefined): string {
   if (!val) return '';
   if (typeof val === 'string') return val;
-  return val.id;
+  // Populated Mongoose lean docs use _id; auth endpoints normalize to id
+  return val.id || (val as unknown as { _id?: string })._id || '';
 }
 
 function Initials({ email }: { email: string }) {
