@@ -2,7 +2,9 @@
 
 A production-ready MERN stack task management application featuring JWT authentication, WebSocket-powered real-time collaboration, and a polished React UI.
 
-**API Docs:** http://localhost:3001/api-docs (Swagger UI, local)
+**API Docs:** https://task-management-assignment-dtoj.onrender.com/api-docs/
+
+http://localhost:3001/api-docs (Swagger UI, local)
 
 ---
 
