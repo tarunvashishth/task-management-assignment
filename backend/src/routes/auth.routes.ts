@@ -1,4 +1,4 @@
-import { Router, Request, Response, NextFunction } from 'express';
+import { Router, Request, Response, NextFunction, CookieOptions } from 'express';
 import { z } from 'zod';
 import authService from '../services/auth.service';
 import { authenticate } from '../middleware/auth.middleware';
@@ -7,10 +7,12 @@ import { AuthRequest, AppError, ErrorCodes } from '../types';
 
 const router = Router();
 
-const COOKIE_BASE = {
+const isProduction = process.env.NODE_ENV === 'production';
+
+const COOKIE_BASE: CookieOptions = {
   httpOnly: true,
-  secure: process.env.NODE_ENV === 'production',
-  sameSite: 'strict' as const,
+  secure: isProduction,
+  sameSite: isProduction ? 'none' : 'lax',
 };
 
 const credentialsSchema = z.object({
@@ -128,8 +130,8 @@ router.post('/login', authRateLimit, async (req: Request, res: Response, next: N
 router.post('/logout', authenticate, (req: AuthRequest, res: Response, next: NextFunction) => {
   try {
     authService.logout(req.user!.jti, req.user!.refresh_jti);
-    res.clearCookie('access_token');
-    res.clearCookie('refresh_token', { path: '/auth/refresh' });
+    res.clearCookie('access_token', COOKIE_BASE);
+    res.clearCookie('refresh_token', { ...COOKIE_BASE, path: '/auth/refresh' });
     res.json({ message: 'Logged out successfully' });
   } catch (err) {
     next(err);

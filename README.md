@@ -336,8 +336,10 @@ Add an Nginx reverse proxy + Let's Encrypt for HTTPS.
 | JWT_ACCESS_EXPIRES  | No       | Default: 15m                          |
 | JWT_REFRESH_EXPIRES | No       | Default: 7d                           |
 | PORT                | No       | Default: 3001                         |
-| FRONTEND_URL        | Yes      | Allowed CORS origin (frontend URL)    |
-| NODE_ENV            | No       | Set to `production` for prod          |
+| FRONTEND_URL        | Yes      | Allowed CORS origin(s), comma-separated for multiple Vercel URLs |
+| NODE_ENV            | No       | Set to `production` for prod. Production auth cookies use `SameSite=None; Secure` for cross-site Vercel/API requests |
+
+For a Vercel frontend calling a separately deployed backend, set `FRONTEND_URL` on the backend to the exact Vercel origin, for example `https://your-app.vercel.app`. If you also use preview deployments, provide a comma-separated list of exact origins.
 
 ---
 

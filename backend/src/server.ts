@@ -10,9 +10,14 @@ const PORT = parseInt(process.env.PORT || '3001', 10);
 
 const httpServer = http.createServer(app);
 
+const allowedOrigins = (process.env.FRONTEND_URL || 'http://localhost:5173')
+  .split(',')
+  .map((origin) => origin.trim())
+  .filter(Boolean);
+
 const io = new Server(httpServer, {
   cors: {
-    origin: process.env.FRONTEND_URL || 'http://localhost:5173',
+    origin: allowedOrigins,
     credentials: true,
   },
 });
