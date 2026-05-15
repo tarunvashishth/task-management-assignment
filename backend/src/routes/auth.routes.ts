@@ -7,12 +7,15 @@ import { AuthRequest, AppError, ErrorCodes } from '../types';
 
 const router = Router();
 
-const isProduction = process.env.NODE_ENV === 'production';
+const hasHttpsFrontend = (process.env.FRONTEND_URL || '')
+  .split(',')
+  .some((origin) => origin.trim().startsWith('https://'));
+const useCrossSiteCookies = process.env.NODE_ENV === 'production' || hasHttpsFrontend;
 
 const COOKIE_BASE: CookieOptions = {
   httpOnly: true,
-  secure: isProduction,
-  sameSite: isProduction ? 'none' : 'lax',
+  secure: useCrossSiteCookies,
+  sameSite: useCrossSiteCookies ? 'none' : 'lax',
 };
 
 const credentialsSchema = z.object({

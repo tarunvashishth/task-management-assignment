@@ -1,5 +1,17 @@
 {
   "rewrites": [
+    {
+      "source": "/auth/:path*",
+      "destination": "https://task-management-assignment-dtoj.onrender.com/auth/:path*"
+    },
+    {
+      "source": "/tasks/:path*",
+      "destination": "https://task-management-assignment-dtoj.onrender.com/tasks/:path*"
+    },
+    {
+      "source": "/users/:path*",
+      "destination": "https://task-management-assignment-dtoj.onrender.com/users/:path*"
+    },
     { "source": "/(.*)", "destination": "/index.html" }
   ]
 }
