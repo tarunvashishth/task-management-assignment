@@ -339,7 +339,7 @@ Add an Nginx reverse proxy + Let's Encrypt for HTTPS.
 | FRONTEND_URL        | Yes      | Allowed CORS origin(s), comma-separated for multiple Vercel URLs |
 | NODE_ENV            | No       | Set to `production` for prod. Production auth cookies use `SameSite=None; Secure` for cross-site Vercel/API requests |
 
-For a Vercel frontend calling a separately deployed backend, set `FRONTEND_URL` on the backend to the exact Vercel origin, for example `https://your-app.vercel.app`. If you also use preview deployments, provide a comma-separated list of exact origins. In Vercel, leave `VITE_API_URL` empty to use the same-origin rewrites in `frontend/vercel.json`; setting it to the Render URL makes browser requests cross-site again. Set `VITE_SOCKET_URL` to the Render backend origin, for example `https://your-api.onrender.com`; Socket.IO authenticates with a short-lived token from `/auth/socket-token`.
+For a Vercel frontend calling a separately deployed backend, set `FRONTEND_URL` on the backend to the exact Vercel origin, for example `https://your-app.vercel.app`. If you also use preview deployments, provide a comma-separated list of exact origins. In Vercel, leave `VITE_API_URL` empty to use the same-origin rewrites in `frontend/vercel.json`; setting it to the Render URL makes browser requests cross-site again. Set `VITE_SOCKET_URL` to the Render backend origin, for example `https://your-api.onrender.com`; Socket.IO authenticates with a short-lived token from `/auth/socket-token`. If the connection stays disconnected, check the browser console for `Socket.IO URL is missing`, `Could not get Socket.IO auth token`, or `Socket.IO connection failed`.
 
 ---
 

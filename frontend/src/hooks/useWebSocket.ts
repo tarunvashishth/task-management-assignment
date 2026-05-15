@@ -3,7 +3,7 @@ import { io, Socket } from 'socket.io-client';
 import { authApi } from '../api/auth.api';
 import { ConnectionState, Task } from '../types';
 
-const SOCKET_URL = import.meta.env.VITE_SOCKET_URL || '';
+const SOCKET_URL = import.meta.env.VITE_SOCKET_URL || import.meta.env.VITE_API_URL || '';
 
 interface EditingUser {
   userId: string;
@@ -34,6 +34,12 @@ export function useWebSocket(enabled: boolean): UseWebSocketReturn {
     let isCancelled = false;
     setConnectionState('connecting');
 
+    if (!SOCKET_URL) {
+      console.error('Socket.IO URL is missing. Set VITE_SOCKET_URL to your Render backend origin.');
+      setConnectionState('disconnected');
+      return;
+    }
+
     authApi.getSocketToken()
       .then((token) => {
         if (isCancelled) return;
@@ -49,10 +55,14 @@ export function useWebSocket(enabled: boolean): UseWebSocketReturn {
 
         socket.on('connect', () => setConnectionState('connected'));
         socket.on('disconnect', () => setConnectionState('disconnected'));
-        socket.on('connect_error', () => setConnectionState('disconnected'));
+        socket.on('connect_error', (err) => {
+          console.error('Socket.IO connection failed:', err.message);
+          setConnectionState('disconnected');
+        });
         socket.io.on('reconnect_attempt', () => setConnectionState('connecting'));
       })
-      .catch(() => {
+      .catch((err) => {
+        console.error('Could not get Socket.IO auth token:', err.response?.status || err.message);
         if (!isCancelled) setConnectionState('disconnected');
       });
 
