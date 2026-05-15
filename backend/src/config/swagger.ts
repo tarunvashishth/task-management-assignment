@@ -8,7 +8,9 @@ const options: swaggerJsdoc.Options = {
       version: '1.0.0',
       description: 'A production-ready task management API with real-time updates',
     },
-    servers: [{ url: `http://localhost:${process.env.PORT || 3001}` }],
+    servers: [
+      { url: process.env.API_BASE_URL || `http://localhost:${process.env.PORT || 3001}` },
+    ],
     components: {
       securitySchemes: {
         cookieAuth: {
@@ -60,7 +62,7 @@ const options: swaggerJsdoc.Options = {
     },
     security: [{ cookieAuth: [] }],
   },
-  apis: ['./src/routes/*.ts'],
+  apis: ['./src/routes/*.ts', './dist/routes/*.js'],
 };
 
 export const swaggerSpec = swaggerJsdoc(options);
