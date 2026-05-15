@@ -8,6 +8,7 @@ import { TaskModal } from '../components/tasks/TaskModal';
 import { LoadingSpinner } from '../components/ui/LoadingSpinner';
 import { useAuth } from '../context/AuthContext';
 import { useTasks } from '../hooks/useTasks';
+import { useScrollFadeIn } from '../hooks/useScrollFadeIn';
 import { useWebSocket } from '../hooks/useWebSocket';
 import { Task, TaskFilters as Filters, User } from '../types';
 
@@ -38,6 +39,7 @@ export function Dashboard() {
   } = useTasks();
 
   const [modalTask, setModalTask] = useState<Task | null | undefined>(undefined); // undefined = closed, null = create, Task = edit
+  const gridRef = useScrollFadeIn<HTMLDivElement>(tasks.length > 0);
   const [users, setUsers] = useState<User[]>([]);
   const [editingUsers, setEditingUsers] = useState<EditingUsers>({});
   const editingTimeouts = useRef<Record<string, ReturnType<typeof setTimeout>>>({});
@@ -178,7 +180,7 @@ export function Dashboard() {
           </div>
         )}
 
-        <div className="grid gap-4 sm:grid-cols-1 md:grid-cols-2 lg:grid-cols-2">
+        <div ref={gridRef} className="grid gap-4 sm:grid-cols-1 md:grid-cols-2 lg:grid-cols-2">
           {tasks.map((task) => (
             <TaskCard
               key={task._id}
