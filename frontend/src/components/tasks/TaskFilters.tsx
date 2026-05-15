@@ -19,8 +19,14 @@ export function TaskFilters({ users, onChange }: Props) {
   const [from, setFrom] = useState('');
   const [to, setTo] = useState('');
   const debounceRef = useRef<ReturnType<typeof setTimeout> | null>(null);
+  const hasMountedRef = useRef(false);
 
   useEffect(() => {
+    if (!hasMountedRef.current) {
+      hasMountedRef.current = true;
+      return;
+    }
+
     if (debounceRef.current) clearTimeout(debounceRef.current);
     debounceRef.current = setTimeout(() => {
       const f: Filters = {};

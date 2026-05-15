@@ -3,6 +3,33 @@ import { Link, useNavigate } from 'react-router-dom';
 import toast from 'react-hot-toast';
 import { useAuth } from '../context/AuthContext';
 
+interface FieldProps {
+  id: string;
+  label: string;
+  type: string;
+  value: string;
+  onChange: (value: string) => void;
+  error?: string;
+  placeholder?: string;
+}
+
+function Field({ id, label, type, value, onChange, error, placeholder }: FieldProps) {
+  return (
+    <div>
+      <label className="block text-xs font-semibold text-white/60 mb-1.5 uppercase tracking-wider">{label}</label>
+      <input
+        id={id}
+        type={type}
+        value={value}
+        onChange={(e) => onChange(e.target.value)}
+        placeholder={placeholder}
+        className={`w-full bg-white/10 border rounded-xl px-4 py-2.5 text-white placeholder:text-white/30 focus:outline-none focus:ring-2 focus:border-transparent transition-all duration-150 min-h-[44px] ${error ? 'border-red-400 focus:ring-red-400' : 'border-white/10 focus:ring-brand-400'}`}
+      />
+      {error && <p className="text-red-400 text-xs mt-1">{error}</p>}
+    </div>
+  );
+}
+
 export function Register() {
   const [email, setEmail]     = useState('');
   const [password, setPassword] = useState('');
@@ -37,24 +64,6 @@ export function Register() {
       setIsLoading(false);
     }
   }
-
-  const Field = ({ id, label, type, value, onChange, error, placeholder }: {
-    id: string; label: string; type: string; value: string;
-    onChange: (v: string) => void; error?: string; placeholder?: string;
-  }) => (
-    <div>
-      <label className="block text-xs font-semibold text-white/60 mb-1.5 uppercase tracking-wider">{label}</label>
-      <input
-        id={id}
-        type={type}
-        value={value}
-        onChange={(e) => onChange(e.target.value)}
-        placeholder={placeholder}
-        className={`w-full bg-white/10 border rounded-xl px-4 py-2.5 text-white placeholder:text-white/30 focus:outline-none focus:ring-2 focus:border-transparent transition-all duration-150 min-h-[44px] ${error ? 'border-red-400 focus:ring-red-400' : 'border-white/10 focus:ring-brand-400'}`}
-      />
-      {error && <p className="text-red-400 text-xs mt-1">{error}</p>}
-    </div>
-  );
 
   return (
     <div className="min-h-screen bg-gradient-to-br from-slate-900 via-brand-900 to-slate-900 flex items-center justify-center p-4">

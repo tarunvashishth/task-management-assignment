@@ -6,14 +6,18 @@ import { Task, TaskFilters } from '../types';
 export function useTasks() {
   const [tasks, setTasks] = useState<Task[]>([]);
   const [isLoading, setIsLoading] = useState(false);
+  const [hasLoadedOnce, setHasLoadedOnce] = useState(false);
   const [nextCursor, setNextCursor] = useState<string | null>(null);
   const filtersRef = useRef<TaskFilters>({});
+  const requestIdRef = useRef(0);
 
   const fetchTasks = useCallback(async (newFilters?: TaskFilters, cursor?: string) => {
     if (newFilters !== undefined) filtersRef.current = newFilters;
+    const requestId = ++requestIdRef.current;
     setIsLoading(true);
     try {
       const result = await tasksApi.getTasks({ ...filtersRef.current, cursor });
+      if (requestId !== requestIdRef.current) return;
 
       if (cursor) {
         setTasks((prev) => [...prev, ...result.tasks]);
@@ -21,10 +25,11 @@ export function useTasks() {
         setTasks(result.tasks);
       }
       setNextCursor(result.nextCursor);
+      setHasLoadedOnce(true);
     } catch {
       toast.error('Failed to load tasks');
     } finally {
-      setIsLoading(false);
+      if (requestId === requestIdRef.current) setIsLoading(false);
     }
   }, []);
 
@@ -103,6 +108,7 @@ export function useTasks() {
   return {
     tasks,
     isLoading,
+    hasLoadedOnce,
     nextCursor,
     fetchTasks,
     loadMore,

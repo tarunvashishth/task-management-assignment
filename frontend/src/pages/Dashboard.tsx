@@ -27,6 +27,7 @@ export function Dashboard() {
   const {
     tasks,
     isLoading,
+    hasLoadedOnce,
     nextCursor,
     fetchTasks,
     loadMore,
@@ -127,7 +128,8 @@ export function Dashboard() {
   }
 
   const isEmpty = !isLoading && tasks.length === 0;
-  const showSkeletons = isLoading && tasks.length === 0;
+  const showSkeletons = isLoading && !hasLoadedOnce;
+  const showInlineLoading = isLoading && hasLoadedOnce;
 
   return (
     <div className="min-h-screen bg-[#f5f6fa] flex flex-col">
@@ -157,6 +159,12 @@ export function Dashboard() {
         <div className="mb-6">
           <TaskFilters users={users} onChange={handleFilterChange} />
         </div>
+
+        {showInlineLoading && (
+          <div className="mb-4 text-sm text-gray-400" aria-live="polite">
+            Updating tasks...
+          </div>
+        )}
 
         {/* Skeleton loading */}
         {showSkeletons && (
