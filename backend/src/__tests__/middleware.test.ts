@@ -1,5 +1,8 @@
 import request from 'supertest';
 import app from '../app';
+import { optionalAuthenticate } from '../middleware/auth.middleware';
+import authService from '../services/auth.service';
+import { AuthRequest } from '../types';
 
 describe('Auth Middleware', () => {
   it('blocks requests without token', async () => {
@@ -46,5 +49,62 @@ describe('Rate Limiter', () => {
         .send({ email: 'ratelimit@example.com', password: 'wrong' });
       expect(res.status).not.toBe(429);
     }
+  });
+});
+
+describe('GET /health', () => {
+  it('returns ok status', async () => {
+    const res = await request(app).get('/health');
+    expect(res.status).toBe(200);
+    expect(res.body.status).toBe('ok');
+    expect(typeof res.body.timestamp).toBe('string');
+  });
+});
+
+describe('CORS origin handling', () => {
+  it('allows requests from a Vercel preview URL', async () => {
+    const res = await request(app)
+      .get('/health')
+      .set('Origin', 'https://my-app-abc123.vercel.app');
+    expect(res.status).toBe(200);
+  });
+
+  it('allows requests with no origin header', async () => {
+    const res = await request(app).get('/health');
+    expect(res.status).toBe(200);
+  });
+});
+
+describe('optionalAuthenticate middleware', () => {
+  it('calls next without setting user when no token is present', () => {
+    const req = { headers: {}, cookies: {} } as unknown as AuthRequest;
+    const res = {} as never;
+    const next = jest.fn();
+    optionalAuthenticate(req, res, next);
+    expect(next).toHaveBeenCalledWith();
+    expect(req.user).toBeUndefined();
+  });
+
+  it('populates req.user with a valid access token in cookie', () => {
+    const { accessToken } = authService.generateTokens('aaaaaaaaaaaaaaaaaaaaaaaa', 'opt@example.com');
+    const req = { headers: {}, cookies: { access_token: accessToken } } as unknown as AuthRequest;
+    const res = {} as never;
+    const next = jest.fn();
+    optionalAuthenticate(req, res, next);
+    expect(next).toHaveBeenCalled();
+    expect(req.user).toBeDefined();
+    expect(req.user!.email).toBe('opt@example.com');
+  });
+
+  it('calls next without setting user when token is invalid', () => {
+    const req = {
+      headers: { authorization: 'Bearer not.a.valid.token' },
+      cookies: {},
+    } as unknown as AuthRequest;
+    const res = {} as never;
+    const next = jest.fn();
+    optionalAuthenticate(req, res, next);
+    expect(next).toHaveBeenCalled();
+    expect(req.user).toBeUndefined();
   });
 });

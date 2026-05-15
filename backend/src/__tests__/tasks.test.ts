@@ -1,5 +1,7 @@
 import request from 'supertest';
 import app from '../app';
+import taskService from '../services/task.service';
+import { Task } from '../models/task.model';
 
 async function registerAndLogin(email: string) {
   const res = await request(app).post('/auth/register').send({ email, password: 'password123' });
@@ -175,6 +177,25 @@ describe('Task Routes', () => {
       expect(res.status).toBe(200);
     });
 
+    it('re-assigns to a different user (evicts previous assignee)', async () => {
+      const user3 = await registerAndLogin('u3@example.com');
+
+      const createRes = await request(app).post('/tasks').set('Cookie', user1.cookie).send({ title: 'Re-assign Me' });
+      const { _id } = createRes.body.task;
+
+      await request(app)
+        .patch(`/tasks/${_id}/assign`)
+        .set('Cookie', user1.cookie)
+        .send({ assignee_id: user2.userId });
+
+      const res = await request(app)
+        .patch(`/tasks/${_id}/assign`)
+        .set('Cookie', user1.cookie)
+        .send({ assignee_id: user3.userId });
+
+      expect(res.status).toBe(200);
+    });
+
     it('returns 404 for non-existent assignee', async () => {
       const createRes = await request(app).post('/tasks').set('Cookie', user1.cookie).send({ title: 'Assign Bad' });
       const { _id } = createRes.body.task;
@@ -197,6 +218,145 @@ describe('Task Routes', () => {
         .send({ assignee_id: user2.userId });
 
       expect(res.status).toBe(403);
+    });
+  });
+
+  describe('GET /tasks query validation', () => {
+    it('returns 422 for invalid status value', async () => {
+      const res = await request(app).get('/tasks?status=invalid-status').set('Cookie', user1.cookie);
+      expect(res.status).toBe(422);
+      expect(res.body.error.code).toBe('VALIDATION_ERROR');
+    });
+
+    it('filters tasks by date range', async () => {
+      await request(app).post('/tasks').set('Cookie', user1.cookie).send({ title: 'Dated Task' });
+      const from = new Date(Date.now() - 60000).toISOString();
+      const to = new Date(Date.now() + 60000).toISOString();
+
+      const res = await request(app)
+        .get(`/tasks?from=${from}&to=${to}`)
+        .set('Cookie', user1.cookie);
+      expect(res.status).toBe(200);
+      expect(res.body.tasks.length).toBeGreaterThanOrEqual(1);
+    });
+  });
+
+  describe('PATCH /tasks/:id body validation', () => {
+    it('returns 422 when version is missing', async () => {
+      const createRes = await request(app).post('/tasks').set('Cookie', user1.cookie).send({ title: 'Validate Me' });
+      const { _id } = createRes.body.task;
+
+      const res = await request(app)
+        .patch(`/tasks/${_id}`)
+        .set('Cookie', user1.cookie)
+        .send({ title: 'No Version' });
+
+      expect(res.status).toBe(422);
+      expect(res.body.error.code).toBe('VALIDATION_ERROR');
+    });
+  });
+
+  describe('Invalid ObjectId paths', () => {
+    it('PATCH /tasks/invalid-id returns 404', async () => {
+      const res = await request(app)
+        .patch('/tasks/not-an-objectid')
+        .set('Cookie', user1.cookie)
+        .send({ title: 'x', version: 0 });
+      expect(res.status).toBe(404);
+    });
+
+    it('DELETE /tasks/invalid-id returns 404', async () => {
+      const res = await request(app).delete('/tasks/not-an-objectid').set('Cookie', user1.cookie);
+      expect(res.status).toBe(404);
+    });
+
+    it('PATCH /tasks/invalid-id/assign returns 404', async () => {
+      const res = await request(app)
+        .patch('/tasks/not-an-objectid/assign')
+        .set('Cookie', user1.cookie)
+        .send({ assignee_id: user2.userId });
+      expect(res.status).toBe(404);
+    });
+
+    it('assign with non-ObjectId assignee_id returns 404', async () => {
+      const createRes = await request(app).post('/tasks').set('Cookie', user1.cookie).send({ title: 'Bad Assignee' });
+      const { _id } = createRes.body.task;
+
+      const res = await request(app)
+        .patch(`/tasks/${_id}/assign`)
+        .set('Cookie', user1.cookie)
+        .send({ assignee_id: 'not-a-valid-objectid' });
+      expect(res.status).toBe(404);
+    });
+
+    it('assign with wrong body type returns 422', async () => {
+      const createRes = await request(app).post('/tasks').set('Cookie', user1.cookie).send({ title: 'Type Error' });
+      const { _id } = createRes.body.task;
+
+      const res = await request(app)
+        .patch(`/tasks/${_id}/assign`)
+        .set('Cookie', user1.cookie)
+        .send({ assignee_id: 99999 });
+      expect(res.status).toBe(422);
+    });
+  });
+
+  describe('Cursor-based pagination', () => {
+    it('uses the returned cursor to fetch the next page', async () => {
+      for (let i = 0; i < 3; i++) {
+        await request(app).post('/tasks').set('Cookie', user1.cookie).send({ title: `Page Task ${i}` });
+      }
+
+      const firstPage = await request(app).get('/tasks?limit=2').set('Cookie', user1.cookie);
+      expect(firstPage.body.tasks).toHaveLength(2);
+      const cursor = firstPage.body.nextCursor as string;
+      expect(cursor).not.toBeNull();
+
+      const secondPage = await request(app).get(`/tasks?limit=2&cursor=${cursor}`).set('Cookie', user1.cookie);
+      expect(secondPage.status).toBe(200);
+      expect(secondPage.body.tasks).toHaveLength(1);
+    });
+
+    it('returns 422 for an invalid cursor value', async () => {
+      const invalidCursor = Buffer.from('not-a-valid-objectid').toString('base64');
+      const res = await request(app).get(`/tasks?cursor=${invalidCursor}`).set('Cookie', user1.cookie);
+      expect(res.status).toBe(422);
+    });
+
+    it('filters tasks by assignee_id', async () => {
+      const createRes = await request(app).post('/tasks').set('Cookie', user1.cookie).send({ title: 'Assignee Filter' });
+      const { _id } = createRes.body.task;
+
+      await request(app).patch(`/tasks/${_id}/assign`).set('Cookie', user1.cookie).send({ assignee_id: user2.userId });
+
+      const res = await request(app).get(`/tasks?assignee_id=${user2.userId}`).set('Cookie', user2.cookie);
+      expect(res.status).toBe(200);
+      expect(res.body.tasks.some((t: { title: string }) => t.title === 'Assignee Filter')).toBe(true);
+    });
+  });
+
+  describe('taskService.getAllUserIdsForTask (unit)', () => {
+    it('returns empty array for non-existent task', async () => {
+      const ids = await taskService.getAllUserIdsForTask('507f1f77bcf86cd799439011');
+      expect(ids).toEqual([]);
+    });
+
+    it('returns only creator id when no assignee', async () => {
+      const task = await Task.create({ title: 'Solo', creator_id: '507f1f77bcf86cd799439011', version: 0 });
+      const ids = await taskService.getAllUserIdsForTask(task._id.toString());
+      expect(ids).toEqual(['507f1f77bcf86cd799439011']);
+    });
+
+    it('returns both creator and assignee ids when assigned', async () => {
+      const task = await Task.create({
+        title: 'Duo',
+        creator_id: '507f1f77bcf86cd799439011',
+        assignee_id: '507f191e810c19729de860ea',
+        version: 0,
+      });
+      const ids = await taskService.getAllUserIdsForTask(task._id.toString());
+      expect(ids).toContain('507f1f77bcf86cd799439011');
+      expect(ids).toContain('507f191e810c19729de860ea');
     });
   });
 });

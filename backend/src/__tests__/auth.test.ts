@@ -1,5 +1,6 @@
 import request from 'supertest';
 import app from '../app';
+import { User } from '../models/user.model';
 
 describe('Auth Routes', () => {
   describe('POST /auth/register', () => {
@@ -94,6 +95,77 @@ describe('Auth Routes', () => {
       const res = await request(app).get('/auth/me').set('Cookie', cookie);
       expect(res.status).toBe(200);
       expect(res.body.user.email).toBe('me@example.com');
+    });
+  });
+
+  describe('POST /auth/refresh', () => {
+    it('returns 401 when refresh token cookie is missing', async () => {
+      const res = await request(app).post('/auth/refresh');
+      expect(res.status).toBe(401);
+      expect(res.body.error.code).toBe('UNAUTHORIZED');
+    });
+
+    it('issues new tokens with a valid refresh token', async () => {
+      const regRes = await request(app)
+        .post('/auth/register')
+        .send({ email: 'refresh@example.com', password: 'password123' });
+      const cookie = regRes.headers['set-cookie'] as unknown as string[];
+
+      const res = await request(app).post('/auth/refresh').set('Cookie', cookie);
+      expect(res.status).toBe(200);
+      expect(res.body.user.email).toBe('refresh@example.com');
+      expect(res.headers['set-cookie']).toBeDefined();
+    });
+
+    it('returns 401 when refresh token is revoked', async () => {
+      const regRes = await request(app)
+        .post('/auth/register')
+        .send({ email: 'revoked@example.com', password: 'password123' });
+      const cookie = regRes.headers['set-cookie'] as unknown as string[];
+
+      await request(app).post('/auth/logout').set('Cookie', cookie);
+
+      const res = await request(app).post('/auth/refresh').set('Cookie', cookie);
+      expect(res.status).toBe(401);
+    });
+
+    it('returns 401 for a cryptographically invalid refresh token', async () => {
+      const res = await request(app)
+        .post('/auth/refresh')
+        .set('Cookie', ['refresh_token=invalid.jwt.token; Path=/auth/refresh; HttpOnly']);
+      expect(res.status).toBe(401);
+      expect(res.body.error.code).toBe('UNAUTHORIZED');
+    });
+
+    it('returns 401 when user no longer exists', async () => {
+      const regRes = await request(app)
+        .post('/auth/register')
+        .send({ email: 'ghost@example.com', password: 'password123' });
+      const cookie = regRes.headers['set-cookie'] as unknown as string[];
+      const userId = regRes.body.user.id as string;
+
+      await User.deleteOne({ _id: userId });
+
+      const res = await request(app).post('/auth/refresh').set('Cookie', cookie);
+      expect(res.status).toBe(401);
+    });
+  });
+
+  describe('POST /auth/socket-token', () => {
+    it('returns a socket token for authenticated users', async () => {
+      const regRes = await request(app)
+        .post('/auth/register')
+        .send({ email: 'socket@example.com', password: 'password123' });
+      const cookie = regRes.headers['set-cookie'] as unknown as string[];
+
+      const res = await request(app).post('/auth/socket-token').set('Cookie', cookie);
+      expect(res.status).toBe(200);
+      expect(typeof res.body.token).toBe('string');
+    });
+
+    it('returns 401 without auth', async () => {
+      const res = await request(app).post('/auth/socket-token');
+      expect(res.status).toBe(401);
     });
   });
 });
