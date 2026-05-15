@@ -2,7 +2,6 @@
 
 A production-ready MERN stack task management application featuring JWT authentication, WebSocket-powered real-time collaboration, and a polished React UI.
 
-**Live Demo:** _see [Deployment](#deployment) section below_  
 **API Docs:** http://localhost:3001/api-docs (Swagger UI, local)
 
 ---
@@ -15,7 +14,6 @@ A production-ready MERN stack task management application featuring JWT authenti
 - [WebSocket Protocol](#websocket-protocol)
 - [Architecture Decisions & Trade-offs](#architecture-decisions--trade-offs)
 - [Assumptions](#assumptions)
-- [Deployment](#deployment)
 - [Time Tracking](#time-tracking)
 
 ---
@@ -294,52 +292,18 @@ CI runs automatically on push via GitHub Actions (`.github/workflows/ci.yml`).
 
 ---
 
-## Deployment
+## Environment Variables
 
-### Option A: Railway (recommended, easiest)
-
-Railway supports Docker Compose natively.
-
-1. Push this repo to GitHub
-2. Go to [railway.app](https://railway.app) → New Project → Deploy from GitHub repo
-3. Railway auto-detects `docker-compose.yml` and deploys all three services
-4. Add environment variables in Railway dashboard (copy from `.env.example`, set real secrets)
-5. Railway provides a public HTTPS URL automatically
-
-### Option B: Render
-
-1. Push to GitHub
-2. Create a Render account → New → Web Service → connect repo
-3. Deploy backend and frontend as separate Web Services, MongoDB as a managed database
-4. Set environment variables per service
-
-### Option C: Self-hosted VPS
-
-```bash
-# On any Ubuntu/Debian VPS with Docker installed
-git clone <repo>
-cd trubot-assignment
-cp .env.example .env
-# Edit .env with production secrets
-docker-compose -f docker-compose.yml up -d --build
-```
-
-Add an Nginx reverse proxy + Let's Encrypt for HTTPS.
-
-### Environment Variables
-
-| Variable            | Required | Description                           |
-|---------------------|----------|---------------------------------------|
-| MONGODB_URI         | Yes      | MongoDB connection string             |
-| JWT_SECRET          | Yes      | 32+ random chars, access token signing|
+| Variable            | Required | Description                            |
+|---------------------|----------|----------------------------------------|
+| MONGODB_URI         | Yes      | MongoDB connection string              |
+| JWT_SECRET          | Yes      | 32+ random chars, access token signing |
 | JWT_REFRESH_SECRET  | Yes      | 32+ random chars, refresh token signing|
-| JWT_ACCESS_EXPIRES  | No       | Default: 15m                          |
-| JWT_REFRESH_EXPIRES | No       | Default: 7d                           |
-| PORT                | No       | Default: 3001                         |
-| FRONTEND_URL        | Yes      | Allowed CORS origin(s), comma-separated for multiple Vercel URLs |
-| NODE_ENV            | No       | Set to `production` for prod. Production auth cookies use `SameSite=None; Secure` for cross-site Vercel/API requests |
-
-For a Vercel frontend calling a separately deployed backend, set `FRONTEND_URL` on the backend to the exact Vercel origin, for example `https://your-app.vercel.app`. If you also use preview deployments, provide a comma-separated list of exact origins. In Vercel, leave `VITE_API_URL` empty to use the same-origin rewrites in `frontend/vercel.json`; setting it to the Render URL makes browser requests cross-site again. Set `VITE_SOCKET_URL` to the Render backend origin, for example `https://your-api.onrender.com`; Socket.IO authenticates with a short-lived token from `/auth/socket-token`. If the connection stays disconnected, check the browser console for `Socket.IO URL is missing`, `Could not get Socket.IO auth token`, or `Socket.IO connection failed`.
+| JWT_ACCESS_EXPIRES  | No       | Default: 15m                           |
+| JWT_REFRESH_EXPIRES | No       | Default: 7d                            |
+| PORT                | No       | Default: 3001                          |
+| FRONTEND_URL        | Yes      | Allowed CORS origin(s), comma-separated|
+| NODE_ENV            | No       | Set to `production` for prod           |
 
 ---
 
