@@ -9,52 +9,37 @@ interface Props {
   onEditingChange?: (isEditing: boolean, taskId?: string) => void;
 }
 
-const STATUSES: Array<{ value: Task['status']; label: string }> = [
-  { value: 'pending', label: 'Pending' },
-  { value: 'in-progress', label: 'In Progress' },
-  { value: 'completed', label: 'Completed' },
+const STATUSES: Array<{ value: Task['status']; label: string; color: string }> = [
+  { value: 'pending',     label: 'Pending',     color: 'text-amber-600'   },
+  { value: 'in-progress', label: 'In Progress', color: 'text-brand-600'   },
+  { value: 'completed',   label: 'Completed',   color: 'text-emerald-600' },
 ];
 
 export function TaskModal({ task, users, onClose, onSave, onEditingChange }: Props) {
-  const [title, setTitle] = useState(task?.title || '');
-  const [description, setDescription] = useState(task?.description || '');
-  const [status, setStatus] = useState<Task['status']>(task?.status || 'pending');
+  const [title, setTitle]           = useState(task?.title ?? '');
+  const [description, setDescription] = useState(task?.description ?? '');
+  const [status, setStatus]         = useState<Task['status']>(task?.status ?? 'pending');
   const [assigneeId, setAssigneeId] = useState<string>(() => {
     const a = task?.assignee_id;
     if (!a) return '';
     if (typeof a === 'string') return a;
     return a.id || (a as unknown as { _id?: string })._id || '';
   });
-  const [deadline, setDeadline] = useState(
-    task?.deadline ? task.deadline.slice(0, 10) : '',
-  );
+  const [deadline, setDeadline]     = useState(task?.deadline ? task.deadline.slice(0, 10) : '');
   const [titleError, setTitleError] = useState('');
   const [isSubmitting, setIsSubmitting] = useState(false);
   const titleRef = useRef<HTMLInputElement>(null);
-
   const isEditing = !!task;
 
   useEffect(() => {
     titleRef.current?.focus();
-    if (isEditing && task?._id) {
-      onEditingChange?.(true, task._id);
-    }
-    return () => {
-      if (isEditing && task?._id) {
-        onEditingChange?.(false, task._id);
-      }
-    };
+    if (isEditing && task?._id) onEditingChange?.(true, task._id);
+    return () => { if (isEditing && task?._id) onEditingChange?.(false, task._id); };
   }, []);
 
   async function handleSubmit(e: React.FormEvent) {
     e.preventDefault();
-
-    if (!title.trim()) {
-      setTitleError('Title is required');
-      titleRef.current?.focus();
-      return;
-    }
-
+    if (!title.trim()) { setTitleError('Title is required'); titleRef.current?.focus(); return; }
     setIsSubmitting(true);
     try {
       const data: Partial<Task> & { version?: number } = {
@@ -64,11 +49,7 @@ export function TaskModal({ task, users, onClose, onSave, onEditingChange }: Pro
         assignee_id: assigneeId || undefined,
         deadline: deadline ? new Date(deadline).toISOString() : undefined,
       };
-
-      if (isEditing) {
-        data.version = task.version;
-      }
-
+      if (isEditing) data.version = task.version;
       const result = await onSave(data);
       if (result) onClose();
     } finally {
@@ -77,80 +58,92 @@ export function TaskModal({ task, users, onClose, onSave, onEditingChange }: Pro
   }
 
   return (
-    <div className="fixed inset-0 bg-black/50 flex items-center justify-center z-50 p-4">
-      <div className="bg-white rounded-xl shadow-xl w-full max-w-lg">
-        <div className="flex items-center justify-between p-4 border-b border-gray-200">
-          <h2 className="text-lg font-semibold text-gray-800">
-            {isEditing ? 'Edit Task' : 'Create Task'}
-          </h2>
+    <div
+      className="fixed inset-0 z-50 flex items-center justify-center p-4"
+      onClick={(e) => { if (e.target === e.currentTarget) onClose(); }}
+    >
+      {/* Backdrop */}
+      <div className="absolute inset-0 bg-black/40 backdrop-blur-[2px]" />
+
+      {/* Panel */}
+      <div className="relative bg-white rounded-3xl shadow-2xl w-full max-w-lg animate-scale-in overflow-hidden">
+        {/* Header */}
+        <div className="flex items-center justify-between px-6 pt-6 pb-4 border-b border-gray-100">
+          <div>
+            <h2 className="text-lg font-bold text-gray-900">{isEditing ? 'Edit Task' : 'New Task'}</h2>
+            <p className="text-sm text-gray-400 mt-0.5">{isEditing ? 'Update task details' : 'Add a task to your board'}</p>
+          </div>
           <button
             onClick={onClose}
-            className="text-gray-400 hover:text-gray-600 min-w-[44px] min-h-[44px] flex items-center justify-center rounded"
+            className="w-9 h-9 flex items-center justify-center text-gray-400 hover:text-gray-700 hover:bg-gray-100 rounded-xl transition-all duration-150"
           >
-            <svg className="w-5 h-5" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+            <svg className="w-4 h-4" fill="none" stroke="currentColor" viewBox="0 0 24 24">
               <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M6 18L18 6M6 6l12 12" />
             </svg>
           </button>
         </div>
 
-        <form onSubmit={handleSubmit} className="p-4 space-y-4">
+        <form onSubmit={handleSubmit} className="p-6 space-y-5">
+          {/* Title */}
           <div>
-            <label className="block text-sm font-medium text-gray-700 mb-1">
-              Title <span className="text-red-500">*</span>
+            <label className="block text-xs font-semibold text-gray-500 uppercase tracking-wider mb-1.5">
+              Title <span className="text-red-400">*</span>
             </label>
             <input
               ref={titleRef}
               type="text"
               value={title}
               onChange={(e) => { setTitle(e.target.value); setTitleError(''); }}
-              className={`w-full border rounded-lg px-3 py-2 text-gray-800 focus:outline-none focus:ring-2 focus:ring-blue-500 ${titleError ? 'border-red-500' : 'border-gray-200'}`}
-              placeholder="Task title"
+              className={`input ${titleError ? 'input-error' : ''}`}
+              placeholder="What needs to be done?"
             />
-            {titleError && <p className="text-red-500 text-xs mt-1">{titleError}</p>}
+            {titleError && <p className="text-red-500 text-xs mt-1.5">{titleError}</p>}
           </div>
 
+          {/* Description */}
           <div>
-            <label className="block text-sm font-medium text-gray-700 mb-1">Description</label>
+            <label className="block text-xs font-semibold text-gray-500 uppercase tracking-wider mb-1.5">Description</label>
             <textarea
               value={description}
               onChange={(e) => setDescription(e.target.value)}
               rows={3}
-              className="w-full border border-gray-200 rounded-lg px-3 py-2 text-gray-800 focus:outline-none focus:ring-2 focus:ring-blue-500 resize-none"
-              placeholder="Optional description"
+              className="input resize-none"
+              placeholder="Add more context (optional)…"
             />
           </div>
 
+          {/* Status + Deadline row */}
           <div className="grid grid-cols-2 gap-4">
             <div>
-              <label className="block text-sm font-medium text-gray-700 mb-1">Status</label>
+              <label className="block text-xs font-semibold text-gray-500 uppercase tracking-wider mb-1.5">Status</label>
               <select
                 value={status}
                 onChange={(e) => setStatus(e.target.value as Task['status'])}
-                className="w-full border border-gray-200 rounded-lg px-3 py-2 text-gray-800 focus:outline-none focus:ring-2 focus:ring-blue-500 min-h-[44px]"
+                className="input"
               >
                 {STATUSES.map((s) => (
                   <option key={s.value} value={s.value}>{s.label}</option>
                 ))}
               </select>
             </div>
-
             <div>
-              <label className="block text-sm font-medium text-gray-700 mb-1">Deadline</label>
+              <label className="block text-xs font-semibold text-gray-500 uppercase tracking-wider mb-1.5">Deadline</label>
               <input
                 type="date"
                 value={deadline}
                 onChange={(e) => setDeadline(e.target.value)}
-                className="w-full border border-gray-200 rounded-lg px-3 py-2 text-gray-800 focus:outline-none focus:ring-2 focus:ring-blue-500 min-h-[44px]"
+                className="input"
               />
             </div>
           </div>
 
+          {/* Assignee */}
           <div>
-            <label className="block text-sm font-medium text-gray-700 mb-1">Assignee</label>
+            <label className="block text-xs font-semibold text-gray-500 uppercase tracking-wider mb-1.5">Assignee</label>
             <select
               value={assigneeId}
               onChange={(e) => setAssigneeId(e.target.value)}
-              className="w-full border border-gray-200 rounded-lg px-3 py-2 text-gray-800 focus:outline-none focus:ring-2 focus:ring-blue-500 min-h-[44px]"
+              className="input"
             >
               <option value="">Unassigned</option>
               {users.map((u) => (
@@ -159,20 +152,19 @@ export function TaskModal({ task, users, onClose, onSave, onEditingChange }: Pro
             </select>
           </div>
 
+          {/* Actions */}
           <div className="flex justify-end gap-3 pt-2">
-            <button
-              type="button"
-              onClick={onClose}
-              className="px-4 py-2 text-sm text-gray-600 hover:text-gray-800 border border-gray-200 rounded-lg min-h-[44px]"
-            >
-              Cancel
-            </button>
-            <button
-              type="submit"
-              disabled={isSubmitting}
-              className="px-4 py-2 text-sm text-white bg-blue-500 hover:bg-blue-600 rounded-lg min-h-[44px] disabled:opacity-50"
-            >
-              {isSubmitting ? 'Saving...' : isEditing ? 'Save Changes' : 'Create Task'}
+            <button type="button" onClick={onClose} className="btn-ghost">Cancel</button>
+            <button type="submit" disabled={isSubmitting} className="btn-primary">
+              {isSubmitting ? (
+                <span className="flex items-center gap-2">
+                  <svg className="w-4 h-4 animate-spin" viewBox="0 0 24 24" fill="none">
+                    <circle className="opacity-25" cx="12" cy="12" r="10" stroke="currentColor" strokeWidth="4"/>
+                    <path className="opacity-75" fill="currentColor" d="M4 12a8 8 0 018-8V0C5.373 0 0 5.373 0 12h4z"/>
+                  </svg>
+                  Saving…
+                </span>
+              ) : isEditing ? 'Save changes' : 'Create task'}
             </button>
           </div>
         </form>

@@ -5,7 +5,7 @@ import { Header } from '../components/layout/Header';
 import { TaskCard } from '../components/tasks/TaskCard';
 import { TaskFilters } from '../components/tasks/TaskFilters';
 import { TaskModal } from '../components/tasks/TaskModal';
-import { LoadingSpinner } from '../components/ui/LoadingSpinner';
+import { SkeletonCard } from '../components/ui/LoadingSpinner';
 import { useAuth } from '../context/AuthContext';
 import { useTasks } from '../hooks/useTasks';
 import { useScrollFadeIn } from '../hooks/useScrollFadeIn';
@@ -38,7 +38,7 @@ export function Dashboard() {
     handleTaskDeleted,
   } = useTasks();
 
-  const [modalTask, setModalTask] = useState<Task | null | undefined>(undefined); // undefined = closed, null = create, Task = edit
+  const [modalTask, setModalTask] = useState<Task | null | undefined>(undefined);
   const gridRef = useScrollFadeIn<HTMLDivElement>(tasks.length > 0);
   const [users, setUsers] = useState<User[]>([]);
   const [editingUsers, setEditingUsers] = useState<EditingUsers>({});
@@ -51,7 +51,6 @@ export function Dashboard() {
     tasksApi.getUsers().then(setUsers).catch(() => {});
   }, []);
 
-  // Wire up real-time events
   useEffect(() => {
     ws.onTaskCreated((task) => {
       handleTaskCreated(task);
@@ -60,7 +59,6 @@ export function Dashboard() {
     ws.onTaskUpdated(handleTaskUpdated);
     ws.onTaskDeleted((taskId) => {
       handleTaskDeleted(taskId);
-      // If modal is open for this task, close it
       if (modalTask && typeof modalTask === 'object' && modalTask._id === taskId) {
         setModalTask(undefined);
         toast('Task was deleted', { icon: '🗑️' });
@@ -72,8 +70,6 @@ export function Dashboard() {
         if (existing.find((u) => u.userId === editingUser.userId)) return prev;
         return { ...prev, [taskId]: [...existing, editingUser] };
       });
-
-      // Auto-clear after 3 seconds of no editing signal
       const key = `${taskId}:${editingUser.userId}`;
       if (editingTimeouts.current[key]) clearTimeout(editingTimeouts.current[key]);
       editingTimeouts.current[key] = setTimeout(() => {
@@ -101,12 +97,9 @@ export function Dashboard() {
 
   async function handleSave(data: Partial<Task> & { version?: number }): Promise<Task | null> {
     if (modalTask) {
-      // Separate assignee from patch fields — backend PATCH doesn't handle assignee_id
       const { assignee_id, ...patchData } = data as Partial<Task> & { version: number };
       const result = await updateTask(modalTask._id, patchData as Partial<Task> & { version: number });
       if (result === null) return null;
-
-      // Handle assignee change via dedicated /assign endpoint
       const prevId = getAssigneeId(modalTask.assignee_id);
       const newId = typeof assignee_id === 'string' ? assignee_id : getAssigneeId(assignee_id);
       if (newId !== prevId) {
@@ -118,7 +111,6 @@ export function Dashboard() {
       }
       return result;
     } else {
-      // Creating
       return createTask(data);
     }
   }
@@ -130,56 +122,72 @@ export function Dashboard() {
 
   function handleEditingChange(isEditing: boolean, taskId?: string) {
     if (!taskId) return;
-    if (isEditing) {
-      ws.notifyEditing(taskId);
-    } else {
-      ws.notifyStopEditing(taskId);
-    }
+    if (isEditing) ws.notifyEditing(taskId);
+    else ws.notifyStopEditing(taskId);
   }
 
   const isEmpty = !isLoading && tasks.length === 0;
+  const showSkeletons = isLoading && tasks.length === 0;
 
   return (
-    <div className="min-h-screen bg-gray-50 flex flex-col">
+    <div className="min-h-screen bg-[#f5f6fa] flex flex-col">
       <Header connectionState={ws.connectionState} />
 
-      <main className="flex-1 max-w-5xl mx-auto w-full px-4 sm:px-6 py-6">
+      <main className="flex-1 max-w-5xl mx-auto w-full px-4 sm:px-6 py-8">
+        {/* Page header */}
         <div className="flex items-center justify-between mb-6 gap-4 flex-wrap">
-          <h2 className="text-xl font-semibold text-gray-800">My Tasks</h2>
+          <div>
+            <h2 className="text-2xl font-bold text-gray-900">My Tasks</h2>
+            <p className="text-sm text-gray-400 mt-0.5">
+              {tasks.length > 0 ? `${tasks.length} task${tasks.length !== 1 ? 's' : ''}` : 'Nothing here yet'}
+            </p>
+          </div>
           <button
             onClick={() => setModalTask(null)}
-            className="bg-blue-500 hover:bg-blue-600 text-white text-sm font-medium px-4 py-2 rounded-lg transition-colors min-h-[44px]"
+            className="btn-primary"
           >
-            + Create Task
+            <svg className="w-4 h-4" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+              <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M12 4v16m8-8H4" />
+            </svg>
+            New Task
           </button>
         </div>
 
-        <div className="mb-4">
+        {/* Filters */}
+        <div className="mb-6">
           <TaskFilters users={users} onChange={handleFilterChange} />
         </div>
 
-        {isLoading && tasks.length === 0 && (
-          <div className="flex justify-center py-12">
-            <LoadingSpinner size="lg" />
+        {/* Skeleton loading */}
+        {showSkeletons && (
+          <div className="grid gap-4 sm:grid-cols-1 md:grid-cols-2 lg:grid-cols-2">
+            {[1, 2, 3, 4].map((n) => <SkeletonCard key={n} />)}
           </div>
         )}
 
+        {/* Empty state */}
         {isEmpty && (
-          <div className="text-center py-16 text-gray-500">
-            <svg className="w-16 h-16 mx-auto mb-4 text-gray-300" fill="none" stroke="currentColor" viewBox="0 0 24 24">
-              <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={1.5} d="M9 5H7a2 2 0 00-2 2v12a2 2 0 002 2h10a2 2 0 002-2V7a2 2 0 00-2-2h-2M9 5a2 2 0 002 2h2a2 2 0 002-2M9 5a2 2 0 012-2h2a2 2 0 012 2" />
-            </svg>
-            <p className="text-lg font-medium text-gray-400">No tasks yet</p>
-            <p className="text-sm mt-1">Create your first task to get started</p>
+          <div className="flex flex-col items-center justify-center py-20 text-center animate-fade-up">
+            <div className="w-20 h-20 rounded-2xl bg-brand-50 flex items-center justify-center mb-5">
+              <svg className="w-10 h-10 text-brand-400" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+                <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={1.5} d="M9 5H7a2 2 0 00-2 2v12a2 2 0 002 2h10a2 2 0 002-2V7a2 2 0 00-2-2h-2M9 5a2 2 0 002 2h2a2 2 0 002-2M9 5a2 2 0 012-2h2a2 2 0 012 2" />
+              </svg>
+            </div>
+            <h3 className="text-lg font-semibold text-gray-800 mb-1">No tasks yet</h3>
+            <p className="text-sm text-gray-400 mb-6 max-w-xs">Create your first task to start organizing your work and collaborating with your team.</p>
             <button
               onClick={() => setModalTask(null)}
-              className="mt-4 bg-blue-500 text-white px-4 py-2 rounded-lg text-sm hover:bg-blue-600 transition-colors min-h-[44px]"
+              className="btn-primary"
             >
+              <svg className="w-4 h-4" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+                <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M12 4v16m8-8H4" />
+              </svg>
               Create your first task
             </button>
           </div>
         )}
 
+        {/* Task grid */}
         <div ref={gridRef} className="grid gap-4 sm:grid-cols-1 md:grid-cols-2 lg:grid-cols-2">
           {tasks.map((task) => (
             <TaskCard
@@ -193,14 +201,23 @@ export function Dashboard() {
           ))}
         </div>
 
+        {/* Load more */}
         {nextCursor && (
-          <div className="flex justify-center mt-6">
+          <div className="flex justify-center mt-8">
             <button
               onClick={loadMore}
               disabled={isLoading}
-              className="text-sm text-blue-500 hover:text-blue-700 border border-blue-200 px-4 py-2 rounded-lg min-h-[44px] disabled:opacity-50"
+              className="btn-ghost border border-gray-200 px-6"
             >
-              {isLoading ? 'Loading...' : 'Load more'}
+              {isLoading ? (
+                <span className="flex items-center gap-2">
+                  <svg className="w-4 h-4 animate-spin" viewBox="0 0 24 24" fill="none">
+                    <circle className="opacity-25" cx="12" cy="12" r="10" stroke="currentColor" strokeWidth="4"/>
+                    <path className="opacity-75" fill="currentColor" d="M4 12a8 8 0 018-8V0C5.373 0 0 5.373 0 12h4z"/>
+                  </svg>
+                  Loading…
+                </span>
+              ) : 'Load more tasks'}
             </button>
           </div>
         )}

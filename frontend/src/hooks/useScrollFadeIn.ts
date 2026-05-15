@@ -29,6 +29,10 @@ export function useScrollFadeIn<T extends HTMLElement>(hasItems: boolean) {
 
     gsap.set(items, { opacity: 0, y: 32 });
 
+    // Refresh ScrollTrigger after setting initial state so it has accurate
+    // layout measurements before deciding whether to fire immediately.
+    ScrollTrigger.refresh();
+
     gsap.to(items, {
       opacity: 1,
       y: 0,
@@ -37,13 +41,10 @@ export function useScrollFadeIn<T extends HTMLElement>(hasItems: boolean) {
       stagger: 0.1,
       scrollTrigger: {
         trigger: container,
-        start: 'top 85%',
+        start: 'top bottom', // fires as soon as any part of container is visible
         once: true,
       },
     });
-
-    // No cleanup needed — the tween is owned by ScrollTrigger and self-terminates
-    // once it plays. Killing it here would interrupt the animation on Fast Refresh.
   }, [hasItems]);
 
   return containerRef;
