@@ -1,5 +1,6 @@
 import { useEffect, useRef, useState, useCallback } from 'react';
 import { io, Socket } from 'socket.io-client';
+import { authApi } from '../api/auth.api';
 import { ConnectionState, Task } from '../types';
 
 const SOCKET_URL = import.meta.env.VITE_SOCKET_URL || '';
@@ -30,21 +31,34 @@ export function useWebSocket(enabled: boolean): UseWebSocketReturn {
   useEffect(() => {
     if (!enabled) return;
 
-    const socket = io(SOCKET_URL, {
-      withCredentials: true,
-      reconnectionAttempts: Infinity,
-      reconnectionDelay: 1000,
-    });
+    let isCancelled = false;
+    setConnectionState('connecting');
 
-    socketRef.current = socket;
+    authApi.getSocketToken()
+      .then((token) => {
+        if (isCancelled) return;
 
-    socket.on('connect', () => setConnectionState('connected'));
-    socket.on('disconnect', () => setConnectionState('disconnected'));
-    socket.on('connect_error', () => setConnectionState('disconnected'));
-    socket.io.on('reconnect_attempt', () => setConnectionState('connecting'));
+        const socket = io(SOCKET_URL, {
+          auth: { token },
+          withCredentials: true,
+          reconnectionAttempts: 5,
+          reconnectionDelay: 1000,
+        });
+
+        socketRef.current = socket;
+
+        socket.on('connect', () => setConnectionState('connected'));
+        socket.on('disconnect', () => setConnectionState('disconnected'));
+        socket.on('connect_error', () => setConnectionState('disconnected'));
+        socket.io.on('reconnect_attempt', () => setConnectionState('connecting'));
+      })
+      .catch(() => {
+        if (!isCancelled) setConnectionState('disconnected');
+      });
 
     return () => {
-      socket.disconnect();
+      isCancelled = true;
+      socketRef.current?.disconnect();
       socketRef.current = null;
     };
   }, [enabled]);

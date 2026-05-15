@@ -200,4 +200,9 @@ router.get('/me', authenticate, async (req: AuthRequest, res: Response, next: Ne
   }
 });
 
+router.post('/socket-token', authenticate, (req: AuthRequest, res: Response) => {
+  const token = authService.generateSocketToken(req.user!.id, req.user!.email);
+  res.json({ token });
+});
+
 export default router;

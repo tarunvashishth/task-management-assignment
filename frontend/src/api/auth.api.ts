@@ -20,4 +20,9 @@ export const authApi = {
     const res = await client.get<{ user: User }>('/auth/me');
     return res.data.user;
   },
+
+  async getSocketToken(): Promise<string> {
+    const res = await client.post<{ token: string }>('/auth/socket-token');
+    return res.data.token;
+  },
 };

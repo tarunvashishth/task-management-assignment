@@ -59,6 +59,14 @@ class AuthService {
     return { accessToken, refreshToken };
   }
 
+  generateSocketToken(userId: string, email: string): string {
+    return jwt.sign(
+      { id: userId, email, jti: uuidv4(), refresh_jti: 'socket' } as TokenPayload,
+      this.accessSecret,
+      { expiresIn: '2m' } as jwt.SignOptions,
+    );
+  }
+
   verifyAccessToken(token: string): TokenPayload {
     try {
       return jwt.verify(token, this.accessSecret) as TokenPayload;
