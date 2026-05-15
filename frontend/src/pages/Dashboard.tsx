@@ -11,6 +11,12 @@ import { useTasks } from '../hooks/useTasks';
 import { useWebSocket } from '../hooks/useWebSocket';
 import { Task, TaskFilters as Filters, User } from '../types';
 
+function getAssigneeId(val: Task['assignee_id']): string {
+  if (!val) return '';
+  if (typeof val === 'string') return val;
+  return val.id || (val as unknown as { _id?: string })._id || '';
+}
+
 interface EditingUsers {
   [taskId: string]: Array<{ userId: string; userEmail: string }>;
 }
@@ -93,8 +99,22 @@ export function Dashboard() {
 
   async function handleSave(data: Partial<Task> & { version?: number }): Promise<Task | null> {
     if (modalTask) {
-      // Editing
-      return updateTask(modalTask._id, data as Partial<Task> & { version: number });
+      // Separate assignee from patch fields — backend PATCH doesn't handle assignee_id
+      const { assignee_id, ...patchData } = data as Partial<Task> & { version: number };
+      const result = await updateTask(modalTask._id, patchData as Partial<Task> & { version: number });
+      if (result === null) return null;
+
+      // Handle assignee change via dedicated /assign endpoint
+      const prevId = getAssigneeId(modalTask.assignee_id);
+      const newId = typeof assignee_id === 'string' ? assignee_id : getAssigneeId(assignee_id);
+      if (newId !== prevId) {
+        try {
+          await tasksApi.assignTask(modalTask._id, newId || null);
+        } catch {
+          toast.error('Failed to update assignee');
+        }
+      }
+      return result;
     } else {
       // Creating
       return createTask(data);

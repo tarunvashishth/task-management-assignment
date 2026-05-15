@@ -23,7 +23,7 @@ export function TaskModal({ task, users, onClose, onSave, onEditingChange }: Pro
     const a = task?.assignee_id;
     if (!a) return '';
     if (typeof a === 'string') return a;
-    return a.id;
+    return a.id || (a as unknown as { _id?: string })._id || '';
   });
   const [deadline, setDeadline] = useState(
     task?.deadline ? task.deadline.slice(0, 10) : '',
