@@ -5,12 +5,12 @@ import { ScrollTrigger } from 'gsap/ScrollTrigger';
 gsap.registerPlugin(ScrollTrigger);
 
 /**
- * Per-card scroll-scrub reveal: rotateX(60deg) + opacity 0 → natural state.
- * Each direct child gets its own pinned ScrollTrigger so the animation is
- * driven 1-to-1 by the scrollbar while the card stays fixed in view.
+ * Staggered fade-in (opacity 0→1, y 32→0) for direct children of a container
+ * as the container enters the viewport. Plays exactly once — subsequent re-renders
+ * caused by data updates (e.g., socket events) do not restart the animation.
  *
- * @param hasItems - pass `items.length > 0`; hook waits until true before
- *   measuring and wiring up triggers.
+ * @param hasItems - pass `items.length > 0`; the hook waits for this to become
+ *   true before setting the initial hidden state and creating the ScrollTrigger.
  */
 export function useScrollFadeIn<T extends HTMLElement>(hasItems: boolean) {
   const containerRef = useRef<T>(null);
@@ -22,39 +22,29 @@ export function useScrollFadeIn<T extends HTMLElement>(hasItems: boolean) {
     const container = containerRef.current;
     if (!container) return;
 
-    const cards = Array.from(container.children) as HTMLElement[];
-    if (cards.length === 0) return;
+    const items = Array.from(container.children) as HTMLElement[];
+    if (items.length === 0) return;
 
     hasAnimated.current = true;
 
-    // Set perspective on each card so rotateX renders with depth.
-    gsap.set(cards, {
-      transformPerspective: 900,
-      rotateX: 60,
-      opacity: 0,
-      transformOrigin: 'top center',
-    });
+    gsap.set(items, { opacity: 0, y: 32 });
 
+    // Refresh ScrollTrigger after setting initial state so it has accurate
+    // layout measurements before deciding whether to fire immediately.
     ScrollTrigger.refresh();
 
-    cards.forEach((card) => {
-      gsap.to(card, {
-        rotateX: 0,
-        opacity: 1,
-        ease: 'none',
-        scrollTrigger: {
-          trigger: card,
-          start: 'top 80%',   // top edge of card crosses 80% of viewport height
-          end: 'top 30%',     // animation completes when card top reaches 30%
-          scrub: true,        // ties progress directly to scroll position
-          pin: true,          // pins the card while the animation is playing
-        },
-      });
+    gsap.to(items, {
+      opacity: 1,
+      y: 0,
+      duration: 0.5,
+      ease: 'power2.out',
+      stagger: 0.1,
+      scrollTrigger: {
+        trigger: container,
+        start: 'top bottom', // fires as soon as any part of container is visible
+        once: true,
+      },
     });
-
-    return () => {
-      ScrollTrigger.getAll().forEach((t) => t.kill());
-    };
   }, [hasItems]);
 
   return containerRef;
