@@ -1,4 +1,4 @@
-import { useState, useCallback } from 'react';
+import { useState, useCallback, useRef } from 'react';
 import toast from 'react-hot-toast';
 import { tasksApi } from '../api/tasks.api';
 import { Task, TaskFilters } from '../types';
@@ -7,13 +7,13 @@ export function useTasks() {
   const [tasks, setTasks] = useState<Task[]>([]);
   const [isLoading, setIsLoading] = useState(false);
   const [nextCursor, setNextCursor] = useState<string | null>(null);
-  const [filters, setFilters] = useState<TaskFilters>({});
+  const filtersRef = useRef<TaskFilters>({});
 
   const fetchTasks = useCallback(async (newFilters?: TaskFilters, cursor?: string) => {
+    if (newFilters !== undefined) filtersRef.current = newFilters;
     setIsLoading(true);
     try {
-      const activeFilters = newFilters ?? filters;
-      const result = await tasksApi.getTasks({ ...activeFilters, cursor });
+      const result = await tasksApi.getTasks({ ...filtersRef.current, cursor });
 
       if (cursor) {
         setTasks((prev) => [...prev, ...result.tasks]);
@@ -21,17 +21,16 @@ export function useTasks() {
         setTasks(result.tasks);
       }
       setNextCursor(result.nextCursor);
-      if (newFilters) setFilters(newFilters);
     } catch {
       toast.error('Failed to load tasks');
     } finally {
       setIsLoading(false);
     }
-  }, [filters]);
+  }, []);
 
   const loadMore = useCallback(() => {
     if (nextCursor) fetchTasks(undefined, nextCursor);
-  }, [fetchTasks, nextCursor]);
+  }, [nextCursor]);
 
   const createTask = useCallback(async (data: Partial<Task>): Promise<Task | null> => {
     try {
@@ -68,7 +67,7 @@ export function useTasks() {
       }
       return null;
     }
-  }, [tasks, fetchTasks]);
+  }, [tasks]);
 
   const deleteTask = useCallback(async (id: string): Promise<boolean> => {
     const prev = tasks;
@@ -105,7 +104,6 @@ export function useTasks() {
     tasks,
     isLoading,
     nextCursor,
-    filters,
     fetchTasks,
     loadMore,
     createTask,
