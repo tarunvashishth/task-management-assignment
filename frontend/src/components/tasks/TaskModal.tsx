@@ -30,12 +30,13 @@ export function TaskModal({ task, users, onClose, onSave, onEditingChange }: Pro
   const [isSubmitting, setIsSubmitting] = useState(false);
   const titleRef = useRef<HTMLInputElement>(null);
   const isEditing = !!task;
+  const taskId = task?._id;
 
   useEffect(() => {
     titleRef.current?.focus();
-    if (isEditing && task?._id) onEditingChange?.(true, task._id);
-    return () => { if (isEditing && task?._id) onEditingChange?.(false, task._id); };
-  }, []);
+    if (isEditing && taskId) onEditingChange?.(true, taskId);
+    return () => { if (isEditing && taskId) onEditingChange?.(false, taskId); };
+  }, [isEditing, onEditingChange, taskId]);
 
   async function handleSubmit(e: React.FormEvent) {
     e.preventDefault();

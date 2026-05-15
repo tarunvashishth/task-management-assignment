@@ -35,7 +35,7 @@ export function useTasks() {
 
   const loadMore = useCallback(() => {
     if (nextCursor) fetchTasks(undefined, nextCursor);
-  }, [nextCursor]);
+  }, [fetchTasks, nextCursor]);
 
   const createTask = useCallback(async (data: Partial<Task>): Promise<Task | null> => {
     try {
@@ -72,7 +72,7 @@ export function useTasks() {
       }
       return null;
     }
-  }, [tasks]);
+  }, [fetchTasks, tasks]);
 
   const deleteTask = useCallback(async (id: string): Promise<boolean> => {
     const prev = tasks;

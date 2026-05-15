@@ -6,7 +6,7 @@ import { TaskCard } from '../components/tasks/TaskCard';
 import { TaskFilters } from '../components/tasks/TaskFilters';
 import { TaskModal } from '../components/tasks/TaskModal';
 import { SkeletonCard } from '../components/ui/LoadingSpinner';
-import { useAuth } from '../context/AuthContext';
+import { useAuth } from '../context/useAuth';
 import { useTasks } from '../hooks/useTasks';
 import { useScrollFadeIn } from '../hooks/useScrollFadeIn';
 import { useWebSocket } from '../hooks/useWebSocket';
@@ -50,7 +50,7 @@ export function Dashboard() {
   useEffect(() => {
     fetchTasks();
     tasksApi.getUsers().then(setUsers).catch(() => {});
-  }, []);
+  }, [fetchTasks]);
 
   useEffect(() => {
     ws.onTaskCreated((task) => {
@@ -121,11 +121,11 @@ export function Dashboard() {
     await deleteTask(taskId);
   }
 
-  function handleEditingChange(isEditing: boolean, taskId?: string) {
+  const handleEditingChange = useCallback((isEditing: boolean, taskId?: string) => {
     if (!taskId) return;
     if (isEditing) ws.notifyEditing(taskId);
     else ws.notifyStopEditing(taskId);
-  }
+  }, [ws]);
 
   const isEmpty = !isLoading && tasks.length === 0;
   const showSkeletons = isLoading && !hasLoadedOnce;

@@ -2,7 +2,6 @@ import { Router, Response, NextFunction } from 'express';
 import { z } from 'zod';
 import taskService from '../services/task.service';
 import socketService from '../services/socket.service';
-import { User } from '../models/user.model';
 import { authenticate } from '../middleware/auth.middleware';
 import { AuthRequest, AppError, ErrorCodes } from '../types';
 
