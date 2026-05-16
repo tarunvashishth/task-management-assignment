@@ -1,4 +1,4 @@
-# TruBot Assignment — Task Management API with Real-time Updates
+# Assignment — Task Management API with Real-time Updates
 
 A production-ready MERN stack task management application featuring JWT authentication, WebSocket-powered real-time collaboration, and a polished React UI.
 
