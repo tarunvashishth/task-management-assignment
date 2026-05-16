@@ -10,3 +10,5 @@ coverage/
 .env.production.local
 .gstack/
 .claude/
+plan
+autoplan
