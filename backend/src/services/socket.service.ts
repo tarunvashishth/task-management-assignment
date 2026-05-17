@@ -2,6 +2,17 @@ import { Server, Socket } from 'socket.io';
 import { Task } from '../models/task.model';
 import { ITask } from '../types';
 
+// Safely extract a user id from a ref that may be a string, an ObjectId, or a populated user document.
+// `ref.toString()` on a populated Mongoose document returns the whole object as a string, not the id —
+// so we have to look inside _id first.
+function extractId(ref: unknown): string {
+  if (!ref) return '';
+  if (typeof ref === 'string') return ref;
+  const obj = ref as { _id?: unknown; toString?: () => string };
+  if (obj._id) return String(obj._id);
+  return obj.toString ? obj.toString() : String(ref);
+}
+
 // Maps userId -> Set of socketIds
 const userSocketMap = new Map<string, Set<string>>();
 
@@ -52,8 +63,8 @@ class SocketService {
 
   emitTaskCreated(task: ITask): void {
     if (!this.io) return;
-    const creatorId = task.creator_id.toString();
-    const assigneeId = task.assignee_id?.toString();
+    const creatorId = extractId(task.creator_id);
+    const assigneeId = extractId(task.assignee_id);
 
     // Emit to all sockets of creator
     this.emitToUser(creatorId, 'task:created', { task });
@@ -66,13 +77,13 @@ class SocketService {
 
   emitTaskUpdated(task: ITask): void {
     if (!this.io) return;
-    const room = `task:${task._id.toString()}`;
+    const room = `task:${extractId(task._id)}`;
     this.io.to(room).emit('task:updated', { task });
 
     // Also emit directly to creator/assignee only if they haven't joined the room
     // (avoids double delivery to users who are currently viewing the task detail)
-    const creatorId = task.creator_id.toString();
-    const assigneeId = task.assignee_id?.toString();
+    const creatorId = extractId(task.creator_id);
+    const assigneeId = extractId(task.assignee_id);
 
     this.emitToUserIfNotInRoom(creatorId, room, 'task:updated', { task });
     if (assigneeId && assigneeId !== creatorId) {

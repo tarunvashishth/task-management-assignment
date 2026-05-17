@@ -216,9 +216,13 @@ router.patch('/:id', async (req: AuthRequest, res: Response, next: NextFunction)
  */
 router.delete('/:id', async (req: AuthRequest, res: Response, next: NextFunction) => {
   try {
+    // getVisibleTaskById returns a populated task, so creator_id/assignee_id may be User documents.
+    // Use _id explicitly instead of .toString() on the ref.
     const task = await taskService.getVisibleTaskById(req.params.id, req.user!.id);
-    const creatorId = task?.creator_id?.toString();
-    const assigneeId = task?.assignee_id?.toString();
+    const creatorRef = task?.creator_id as unknown as { _id?: unknown } | null | undefined;
+    const assigneeRef = task?.assignee_id as unknown as { _id?: unknown } | null | undefined;
+    const creatorId = creatorRef?._id ? String(creatorRef._id) : creatorRef ? String(creatorRef) : undefined;
+    const assigneeId = assigneeRef?._id ? String(assigneeRef._id) : assigneeRef ? String(assigneeRef) : undefined;
 
     await taskService.deleteTask(req.params.id, req.user!.id);
     if (creatorId) {
