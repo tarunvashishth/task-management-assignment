@@ -10,21 +10,31 @@ interface EditingUser {
   userEmail: string;
 }
 
-interface UseWebSocketReturn {
+export interface UseWebSocketOptions {
+  enabled: boolean;
+  onTaskCreated?: (task: Task) => void;
+  onTaskUpdated?: (task: Task) => void;
+  onTaskDeleted?: (taskId: string) => void;
+  onUserEditing?: (taskId: string, user: EditingUser) => void;
+  onUserStoppedEditing?: (taskId: string, userId: string) => void;
+  onEvicted?: (taskId: string) => void;
+}
+
+export interface UseWebSocketReturn {
   connectionState: ConnectionState;
   joinTaskRoom: (taskId: string) => void;
   leaveTaskRoom: (taskId: string) => void;
   notifyEditing: (taskId: string) => void;
   notifyStopEditing: (taskId: string) => void;
-  onTaskCreated: (cb: (task: Task) => void) => void;
-  onTaskUpdated: (cb: (task: Task) => void) => void;
-  onTaskDeleted: (cb: (taskId: string) => void) => void;
-  onUserEditing: (cb: (taskId: string, user: EditingUser) => void) => void;
-  onUserStoppedEditing: (cb: (taskId: string, userId: string) => void) => void;
-  onEvicted: (cb: (taskId: string) => void) => void;
 }
 
-export function useWebSocket(enabled: boolean): UseWebSocketReturn {
+export function useWebSocket(options: UseWebSocketOptions): UseWebSocketReturn {
+  const { enabled } = options;
+
+  // Latest callbacks always available without re-registering socket listeners.
+  const optsRef = useRef(options);
+  optsRef.current = options;
+
   const socketRef = useRef<Socket | null>(null);
   const [connectionState, setConnectionState] = useState<ConnectionState>('connecting');
 
@@ -60,6 +70,25 @@ export function useWebSocket(enabled: boolean): UseWebSocketReturn {
           setConnectionState('disconnected');
         });
         socket.io.on('reconnect_attempt', () => setConnectionState('connecting'));
+
+        socket.on('task:created', ({ task }: { task: Task }) => {
+          optsRef.current.onTaskCreated?.(task);
+        });
+        socket.on('task:updated', ({ task }: { task: Task }) => {
+          optsRef.current.onTaskUpdated?.(task);
+        });
+        socket.on('task:deleted', ({ taskId }: { taskId: string }) => {
+          optsRef.current.onTaskDeleted?.(taskId);
+        });
+        socket.on('task:editing', ({ taskId, userId, userEmail }: { taskId: string; userId: string; userEmail: string }) => {
+          optsRef.current.onUserEditing?.(taskId, { userId, userEmail });
+        });
+        socket.on('task:stop-editing', ({ taskId, userId }: { taskId: string; userId: string }) => {
+          optsRef.current.onUserStoppedEditing?.(taskId, userId);
+        });
+        socket.on('task:evicted', ({ taskId }: { taskId: string }) => {
+          optsRef.current.onEvicted?.(taskId);
+        });
       })
       .catch((err) => {
         console.error('Could not get Socket.IO auth token:', err.response?.status || err.message);
@@ -89,48 +118,11 @@ export function useWebSocket(enabled: boolean): UseWebSocketReturn {
     socketRef.current?.emit('task:stop-editing', { taskId });
   }, []);
 
-  const onTaskCreated = useCallback((cb: (task: Task) => void) => {
-    socketRef.current?.on('task:created', ({ task }: { task: Task }) => cb(task));
-    return () => { socketRef.current?.off('task:created'); };
-  }, []);
-
-  const onTaskUpdated = useCallback((cb: (task: Task) => void) => {
-    socketRef.current?.on('task:updated', ({ task }: { task: Task }) => cb(task));
-    return () => { socketRef.current?.off('task:updated'); };
-  }, []);
-
-  const onTaskDeleted = useCallback((cb: (taskId: string) => void) => {
-    socketRef.current?.on('task:deleted', ({ taskId }: { taskId: string }) => cb(taskId));
-    return () => { socketRef.current?.off('task:deleted'); };
-  }, []);
-
-  const onUserEditing = useCallback((cb: (taskId: string, user: EditingUser) => void) => {
-    socketRef.current?.on('task:editing', ({ taskId, userId, userEmail }: { taskId: string; userId: string; userEmail: string }) => {
-      cb(taskId, { userId, userEmail });
-    });
-  }, []);
-
-  const onUserStoppedEditing = useCallback((cb: (taskId: string, userId: string) => void) => {
-    socketRef.current?.on('task:stop-editing', ({ taskId, userId }: { taskId: string; userId: string }) => {
-      cb(taskId, userId);
-    });
-  }, []);
-
-  const onEvicted = useCallback((cb: (taskId: string) => void) => {
-    socketRef.current?.on('task:evicted', ({ taskId }: { taskId: string }) => cb(taskId));
-  }, []);
-
   return {
     connectionState,
     joinTaskRoom,
     leaveTaskRoom,
     notifyEditing,
     notifyStopEditing,
-    onTaskCreated,
-    onTaskUpdated,
-    onTaskDeleted,
-    onUserEditing,
-    onUserStoppedEditing,
-    onEvicted,
   };
 }

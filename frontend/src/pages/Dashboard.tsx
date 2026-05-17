@@ -45,36 +45,39 @@ export function Dashboard() {
   const [editingUsers, setEditingUsers] = useState<EditingUsers>({});
   const editingTimeouts = useRef<Record<string, ReturnType<typeof setTimeout>>>({});
 
-  const ws = useWebSocket(!!user);
   const tasksRef = useRef<Task[]>([]);
   tasksRef.current = tasks;
+  const modalTaskRef = useRef<Task | null | undefined>(undefined);
+  modalTaskRef.current = modalTask;
 
-  useEffect(() => {
-    fetchTasks();
-    tasksApi.getUsers().then(setUsers).catch(() => {});
-  }, [fetchTasks]);
-
-  useEffect(() => {
-    ws.onTaskCreated((task) => {
+  const { connectionState, notifyEditing, notifyStopEditing } = useWebSocket({
+    enabled: !!user,
+    onTaskCreated: (task) => {
+      const wasInList = tasksRef.current.some((t) => t._id === task._id);
       handleTaskCreated(task);
-      toast.success(`New task: "${task.title}"`);
-    });
-    ws.onTaskUpdated((task) => {
+      if (!wasInList) {
+        const assigneeId = getAssigneeId(task.assignee_id);
+        const isForMe = assigneeId === user?.id;
+        toast.success(isForMe ? `Assigned to you: "${task.title}"` : `New task: "${task.title}"`);
+      }
+    },
+    onTaskUpdated: (task) => {
       const wasInList = tasksRef.current.some((t) => t._id === task._id);
       handleTaskUpdated(task);
       const assigneeId = getAssigneeId(task.assignee_id);
       if (!wasInList && assigneeId === user?.id) {
         toast.success(`Assigned to you: "${task.title}"`);
       }
-    });
-    ws.onTaskDeleted((taskId) => {
+    },
+    onTaskDeleted: (taskId) => {
       handleTaskDeleted(taskId);
-      if (modalTask && typeof modalTask === 'object' && modalTask._id === taskId) {
+      const m = modalTaskRef.current;
+      if (m && typeof m === 'object' && m._id === taskId) {
         setModalTask(undefined);
         toast('Task was deleted', { icon: '🗑️' });
       }
-    });
-    ws.onUserEditing((taskId, editingUser) => {
+    },
+    onUserEditing: (taskId, editingUser) => {
       setEditingUsers((prev) => {
         const existing = prev[taskId] || [];
         if (existing.find((u) => u.userId === editingUser.userId)) return prev;
@@ -87,19 +90,24 @@ export function Dashboard() {
           ...prev,
           [taskId]: (prev[taskId] || []).filter((u) => u.userId !== editingUser.userId),
         }));
-      }, 3000);
-    });
-    ws.onUserStoppedEditing((taskId, userId) => {
+      }, 10000);
+    },
+    onUserStoppedEditing: (taskId, userId) => {
       setEditingUsers((prev) => ({
         ...prev,
         [taskId]: (prev[taskId] || []).filter((u) => u.userId !== userId),
       }));
-    });
-    ws.onEvicted((taskId) => {
+    },
+    onEvicted: (taskId) => {
       handleTaskDeleted(taskId);
       toast('You were removed from this task', { icon: 'ℹ️' });
-    });
-  }, [ws, handleTaskCreated, handleTaskUpdated, handleTaskDeleted, modalTask]);
+    },
+  });
+
+  useEffect(() => {
+    fetchTasks();
+    tasksApi.getUsers().then(setUsers).catch(() => {});
+  }, [fetchTasks]);
 
   const handleFilterChange = useCallback((filters: Filters) => {
     fetchTasks(filters);
@@ -132,9 +140,9 @@ export function Dashboard() {
 
   const handleEditingChange = useCallback((isEditing: boolean, taskId?: string) => {
     if (!taskId) return;
-    if (isEditing) ws.notifyEditing(taskId);
-    else ws.notifyStopEditing(taskId);
-  }, [ws]);
+    if (isEditing) notifyEditing(taskId);
+    else notifyStopEditing(taskId);
+  }, [notifyEditing, notifyStopEditing]);
 
   const isEmpty = !isLoading && tasks.length === 0;
   const showSkeletons = isLoading && !hasLoadedOnce;
@@ -142,7 +150,7 @@ export function Dashboard() {
 
   return (
     <div className="min-h-screen bg-[#f5f6fa] flex flex-col">
-      <Header connectionState={ws.connectionState} />
+      <Header connectionState={connectionState} />
 
       <main className="flex-1 max-w-5xl mx-auto w-full px-4 sm:px-6 py-8">
         {/* Page header */}

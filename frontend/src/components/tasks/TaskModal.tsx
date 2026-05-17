@@ -37,8 +37,13 @@ export function TaskModal({ task, users, onClose, onSave, onEditingChange, editi
 
   useEffect(() => {
     titleRef.current?.focus();
-    if (isEditing && taskId) onEditingChange?.(true, taskId);
-    return () => { if (isEditing && taskId) onEditingChange?.(false, taskId); };
+    if (!isEditing || !taskId) return;
+    onEditingChange?.(true, taskId);
+    const heartbeat = setInterval(() => onEditingChange?.(true, taskId), 5000);
+    return () => {
+      clearInterval(heartbeat);
+      onEditingChange?.(false, taskId);
+    };
   }, [isEditing, onEditingChange, taskId]);
 
   async function handleSubmit(e: React.FormEvent) {
