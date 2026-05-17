@@ -61,42 +61,40 @@ class SocketService {
     }
   }
 
-  emitTaskCreated(task: ITask): void {
+  emitTaskCreated(task: ITask, excludeUserId?: string): void {
     if (!this.io) return;
     const creatorId = extractId(task.creator_id);
     const assigneeId = extractId(task.assignee_id);
 
-    // Emit to all sockets of creator
-    this.emitToUser(creatorId, 'task:created', { task });
-
-    // Emit to all sockets of assignee if different from creator
-    if (assigneeId && assigneeId !== creatorId) {
+    if (creatorId && creatorId !== excludeUserId) {
+      this.emitToUser(creatorId, 'task:created', { task });
+    }
+    if (assigneeId && assigneeId !== creatorId && assigneeId !== excludeUserId) {
       this.emitToUser(assigneeId, 'task:created', { task });
     }
   }
 
-  emitTaskUpdated(task: ITask): void {
+  emitTaskUpdated(task: ITask, excludeUserId?: string): void {
     if (!this.io) return;
     const room = `task:${extractId(task._id)}`;
-    this.io.to(room).emit('task:updated', { task });
-
-    // Also emit directly to creator/assignee only if they haven't joined the room
-    // (avoids double delivery to users who are currently viewing the task detail)
     const creatorId = extractId(task.creator_id);
     const assigneeId = extractId(task.assignee_id);
 
-    this.emitToUserIfNotInRoom(creatorId, room, 'task:updated', { task });
-    if (assigneeId && assigneeId !== creatorId) {
+    if (creatorId && creatorId !== excludeUserId) {
+      this.emitToUserIfNotInRoom(creatorId, room, 'task:updated', { task });
+    }
+    if (assigneeId && assigneeId !== creatorId && assigneeId !== excludeUserId) {
       this.emitToUserIfNotInRoom(assigneeId, room, 'task:updated', { task });
     }
   }
 
-  emitTaskDeleted(taskId: string, creatorId: string, assigneeId?: string): void {
+  emitTaskDeleted(taskId: string, creatorId: string, assigneeId?: string, excludeUserId?: string): void {
     if (!this.io) return;
     const payload = { taskId };
-    this.io.to(`task:${taskId}`).emit('task:deleted', payload);
-    this.emitToUser(creatorId, 'task:deleted', payload);
-    if (assigneeId && assigneeId !== creatorId) {
+    if (creatorId && creatorId !== excludeUserId) {
+      this.emitToUser(creatorId, 'task:deleted', payload);
+    }
+    if (assigneeId && assigneeId !== creatorId && assigneeId !== excludeUserId) {
       this.emitToUser(assigneeId, 'task:deleted', payload);
     }
   }

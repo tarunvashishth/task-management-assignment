@@ -40,7 +40,10 @@ export function useTasks() {
   const createTask = useCallback(async (data: Partial<Task>): Promise<Task | null> => {
     try {
       const task = await tasksApi.createTask(data);
-      setTasks((prev) => [task, ...prev]);
+      setTasks((prev) => {
+        if (prev.some((t) => t._id === task._id)) return prev;
+        return [task, ...prev];
+      });
       toast.success('Task created');
       return task;
     } catch {

@@ -18,6 +18,12 @@ function getAssigneeId(val: Task['assignee_id']): string {
   return val.id || (val as unknown as { _id?: string })._id || '';
 }
 
+function getCreatorId(val: Task['creator_id']): string {
+  if (!val) return '';
+  if (typeof val === 'string') return val;
+  return val.id || (val as unknown as { _id?: string })._id || '';
+}
+
 interface EditingUsers {
   [taskId: string]: Array<{ userId: string; userEmail: string }>;
 }
@@ -56,6 +62,10 @@ export function Dashboard() {
       const wasInList = tasksRef.current.some((t) => t._id === task._id);
       handleTaskCreated(task);
       if (!wasInList) {
+        // The originator (the user who just created the task) is now skipped at the backend,
+        // so this branch only fires for other recipients. Guarding here too as defense in depth.
+        const creatorId = getCreatorId(task.creator_id);
+        if (creatorId === user?.id) return;
         const assigneeId = getAssigneeId(task.assignee_id);
         const isForMe = assigneeId === user?.id;
         toast.success(isForMe ? `Assigned to you: "${task.title}"` : `New task: "${task.title}"`);

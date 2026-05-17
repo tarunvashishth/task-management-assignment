@@ -117,7 +117,7 @@ router.post('/', async (req: AuthRequest, res: Response, next: NextFunction) => 
     }
 
     const task = await taskService.createTask(parsed.data as Parameters<typeof taskService.createTask>[0], req.user!.id);
-    socketService.emitTaskCreated(task);
+    socketService.emitTaskCreated(task, req.user!.id);
     res.status(201).json({ task });
   } catch (err) {
     next(err);
@@ -190,7 +190,7 @@ router.patch('/:id', async (req: AuthRequest, res: Response, next: NextFunction)
     }
 
     const task = await taskService.updateTask(req.params.id, req.user!.id, parsed.data as Parameters<typeof taskService.updateTask>[2]);
-    socketService.emitTaskUpdated(task);
+    socketService.emitTaskUpdated(task, req.user!.id);
     res.json({ task });
   } catch (err) {
     next(err);
@@ -226,7 +226,7 @@ router.delete('/:id', async (req: AuthRequest, res: Response, next: NextFunction
 
     await taskService.deleteTask(req.params.id, req.user!.id);
     if (creatorId) {
-      socketService.emitTaskDeleted(req.params.id, creatorId, assigneeId);
+      socketService.emitTaskDeleted(req.params.id, creatorId, assigneeId, req.user!.id);
     }
     res.status(204).send();
   } catch (err) {
@@ -280,7 +280,7 @@ router.patch('/:id/assign', async (req: AuthRequest, res: Response, next: NextFu
       socketService.evictUserFromRoom(previousAssigneeId, req.params.id);
     }
 
-    socketService.emitTaskUpdated(task);
+    socketService.emitTaskUpdated(task, req.user!.id);
     res.json({ task });
   } catch (err) {
     next(err);
