@@ -1,11 +1,11 @@
 import { Navigate, Route, Routes } from 'react-router-dom';
-import { Toaster } from 'react-hot-toast';
 import { AuthProvider } from './context/AuthContext';
 import { useAuth } from './context/useAuth';
 import { Login } from './pages/Login';
 import { Register } from './pages/Register';
 import { Dashboard } from './pages/Dashboard';
 import { LoadingSpinner } from './components/ui/LoadingSpinner';
+import { AppToaster } from './components/ui/AppToaster';
 import { ReactNode } from 'react';
 
 function PrivateRoute({ children }: { children: ReactNode }) {
@@ -52,13 +52,7 @@ export default function App() {
   return (
     <AuthProvider>
       <AppRoutes />
-      <Toaster
-        position="top-right"
-        toastOptions={{
-          duration: 4000,
-          style: { borderRadius: '8px', fontSize: '14px' },
-        }}
-      />
+      <AppToaster />
     </AuthProvider>
   );
 }
