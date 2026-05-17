@@ -46,6 +46,8 @@ export function Dashboard() {
   const editingTimeouts = useRef<Record<string, ReturnType<typeof setTimeout>>>({});
 
   const ws = useWebSocket(!!user);
+  const tasksRef = useRef<Task[]>([]);
+  tasksRef.current = tasks;
 
   useEffect(() => {
     fetchTasks();
@@ -57,7 +59,14 @@ export function Dashboard() {
       handleTaskCreated(task);
       toast.success(`New task: "${task.title}"`);
     });
-    ws.onTaskUpdated(handleTaskUpdated);
+    ws.onTaskUpdated((task) => {
+      const wasInList = tasksRef.current.some((t) => t._id === task._id);
+      handleTaskUpdated(task);
+      const assigneeId = getAssigneeId(task.assignee_id);
+      if (!wasInList && assigneeId === user?.id) {
+        toast.success(`Assigned to you: "${task.title}"`);
+      }
+    });
     ws.onTaskDeleted((taskId) => {
       handleTaskDeleted(taskId);
       if (modalTask && typeof modalTask === 'object' && modalTask._id === taskId) {
@@ -238,6 +247,7 @@ export function Dashboard() {
           onClose={() => setModalTask(undefined)}
           onSave={handleSave}
           onEditingChange={handleEditingChange}
+          editingUsers={modalTask ? editingUsers[modalTask._id] || [] : []}
         />
       )}
     </div>

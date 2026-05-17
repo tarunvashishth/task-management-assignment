@@ -70,11 +70,15 @@ io.on('connection', (socket) => {
   });
 
   socket.on('task:editing', ({ taskId }: { taskId: string }) => {
-    socketService.emitUserEditing(taskId, user.id, user.email);
+    socketService.emitUserEditing(taskId, user.id, user.email).catch((err) => {
+      console.error('emitUserEditing failed:', err);
+    });
   });
 
   socket.on('task:stop-editing', ({ taskId }: { taskId: string }) => {
-    socketService.emitUserStoppedEditing(taskId, user.id);
+    socketService.emitUserStoppedEditing(taskId, user.id).catch((err) => {
+      console.error('emitUserStoppedEditing failed:', err);
+    });
   });
 
   socket.on('disconnect', () => {

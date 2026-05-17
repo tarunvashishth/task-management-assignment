@@ -1,4 +1,5 @@
 import { Server, Socket } from 'socket.io';
+import { Task } from '../models/task.model';
 import { ITask } from '../types';
 
 // Maps userId -> Set of socketIds
@@ -89,14 +90,32 @@ class SocketService {
     }
   }
 
-  emitUserEditing(taskId: string, userId: string, userEmail: string): void {
+  async emitUserEditing(taskId: string, userId: string, userEmail: string): Promise<void> {
     if (!this.io) return;
-    this.io.to(`task:${taskId}`).emit('task:editing', { taskId, userId, userEmail });
+    const recipients = await this.collaboratorIds(taskId, userId);
+    const payload = { taskId, userId, userEmail };
+    for (const recipientId of recipients) {
+      this.emitToUser(recipientId, 'task:editing', payload);
+    }
   }
 
-  emitUserStoppedEditing(taskId: string, userId: string): void {
+  async emitUserStoppedEditing(taskId: string, userId: string): Promise<void> {
     if (!this.io) return;
-    this.io.to(`task:${taskId}`).emit('task:stop-editing', { taskId, userId });
+    const recipients = await this.collaboratorIds(taskId, userId);
+    const payload = { taskId, userId };
+    for (const recipientId of recipients) {
+      this.emitToUser(recipientId, 'task:stop-editing', payload);
+    }
+  }
+
+  private async collaboratorIds(taskId: string, excludeUserId: string): Promise<string[]> {
+    const task = await Task.findById(taskId).select('creator_id assignee_id').lean();
+    if (!task) return [];
+    const ids = new Set<string>();
+    ids.add(task.creator_id.toString());
+    if (task.assignee_id) ids.add(task.assignee_id.toString());
+    ids.delete(excludeUserId);
+    return Array.from(ids);
   }
 
   private emitToUser(userId: string, event: string, data: unknown): void {

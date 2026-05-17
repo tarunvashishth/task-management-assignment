@@ -78,21 +78,29 @@ export function TaskCard({ task, currentUserId, editingUsers, onEdit, onDelete }
             )}
           </div>
 
-          <div className="flex items-center gap-1 flex-shrink-0 opacity-0 group-hover:opacity-100 transition-opacity duration-150">
-            {/* Editing indicators */}
+          <div className="flex items-center gap-1 flex-shrink-0">
+            {/* Editing indicators — always visible, with pulsing dot */}
             {editingUsers.length > 0 && (
-              <div className="flex -space-x-1.5 mr-1">
-                {editingUsers.slice(0, MAX_EDITORS).map((u) => (
-                  <Avatar key={u.userId} email={u.userEmail} size="xs" />
-                ))}
-                {editingUsers.length > MAX_EDITORS && (
-                  <div className="w-5 h-5 rounded-full bg-gray-200 text-gray-600 text-[10px] font-bold flex items-center justify-center ring-2 ring-white">
-                    +{editingUsers.length - MAX_EDITORS}
-                  </div>
-                )}
+              <div
+                className="flex items-center gap-1.5 mr-1 px-2 py-0.5 rounded-full bg-amber-50 ring-1 ring-amber-200 animate-pulse"
+                title={`${editingUsers.map((u) => u.userEmail).join(', ')} editing`}
+              >
+                <span className="w-1.5 h-1.5 rounded-full bg-amber-500" />
+                <div className="flex -space-x-1.5">
+                  {editingUsers.slice(0, MAX_EDITORS).map((u) => (
+                    <Avatar key={u.userId} email={u.userEmail} size="xs" />
+                  ))}
+                  {editingUsers.length > MAX_EDITORS && (
+                    <div className="w-5 h-5 rounded-full bg-gray-200 text-gray-600 text-[10px] font-bold flex items-center justify-center ring-2 ring-white">
+                      +{editingUsers.length - MAX_EDITORS}
+                    </div>
+                  )}
+                </div>
+                <span className="text-[10px] font-semibold text-amber-700 uppercase tracking-wide">Editing</span>
               </div>
             )}
 
+            <div className="flex items-center gap-1 opacity-0 group-hover:opacity-100 transition-opacity duration-150">
             {canEdit && (
               <button
                 onClick={() => onEdit(task)}
@@ -117,6 +125,7 @@ export function TaskCard({ task, currentUserId, editingUsers, onEdit, onDelete }
                 </svg>
               </button>
             )}
+            </div>
           </div>
         </div>
 

@@ -98,7 +98,11 @@ export function useTasks() {
   }, []);
 
   const handleTaskUpdated = useCallback((task: Task) => {
-    setTasks((prev) => prev.map((t) => (t._id === task._id ? task : t)));
+    setTasks((prev) => {
+      const exists = prev.some((t) => t._id === task._id);
+      if (exists) return prev.map((t) => (t._id === task._id ? task : t));
+      return [task, ...prev];
+    });
   }, []);
 
   const handleTaskDeleted = useCallback((taskId: string) => {

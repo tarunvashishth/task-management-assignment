@@ -1,12 +1,15 @@
 import { useEffect, useRef, useState } from 'react';
 import { Task, User } from '../../types';
 
+interface EditingUser { userId: string; userEmail: string }
+
 interface Props {
   task?: Task | null;
   users: User[];
   onClose: () => void;
   onSave: (data: Partial<Task> & { version?: number }) => Promise<Task | null>;
   onEditingChange?: (isEditing: boolean, taskId?: string) => void;
+  editingUsers?: EditingUser[];
 }
 
 const STATUSES: Array<{ value: Task['status']; label: string; color: string }> = [
@@ -15,7 +18,7 @@ const STATUSES: Array<{ value: Task['status']; label: string; color: string }> =
   { value: 'completed',   label: 'Completed',   color: 'text-emerald-600' },
 ];
 
-export function TaskModal({ task, users, onClose, onSave, onEditingChange }: Props) {
+export function TaskModal({ task, users, onClose, onSave, onEditingChange, editingUsers = [] }: Props) {
   const [title, setTitle]           = useState(task?.title ?? '');
   const [description, setDescription] = useState(task?.description ?? '');
   const [status, setStatus]         = useState<Task['status']>(task?.status ?? 'pending');
@@ -83,6 +86,23 @@ export function TaskModal({ task, users, onClose, onSave, onEditingChange }: Pro
             </svg>
           </button>
         </div>
+
+        {isEditing && editingUsers.length > 0 && (
+          <div
+            className="flex items-center gap-2 px-6 py-2.5 bg-amber-50 border-b border-amber-200 text-sm text-amber-800"
+            aria-live="polite"
+          >
+            <span className="relative flex h-2 w-2">
+              <span className="animate-ping absolute inline-flex h-full w-full rounded-full bg-amber-400 opacity-75" />
+              <span className="relative inline-flex rounded-full h-2 w-2 bg-amber-500" />
+            </span>
+            <span className="font-medium">
+              {editingUsers.length === 1
+                ? `${editingUsers[0].userEmail} is also editing this task`
+                : `${editingUsers.length} others are also editing this task`}
+            </span>
+          </div>
+        )}
 
         <form onSubmit={handleSubmit} className="p-6 space-y-5">
           {/* Title */}

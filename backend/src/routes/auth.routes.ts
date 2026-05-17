@@ -72,6 +72,8 @@ router.post('/register', authRateLimit, async (req: Request, res: Response, next
 
     res.status(201).json({
       user: { id: user._id, email: user.email },
+      accessToken,
+      refreshToken,
     });
   } catch (err) {
     next(err);
@@ -113,6 +115,8 @@ router.post('/login', authRateLimit, async (req: Request, res: Response, next: N
 
     res.json({
       user: { id: user._id, email: user.email },
+      accessToken,
+      refreshToken,
     });
   } catch (err) {
     next(err);
@@ -153,7 +157,8 @@ router.post('/logout', authenticate, (req: AuthRequest, res: Response, next: Nex
  */
 router.post('/refresh', async (req: Request, res: Response, next: NextFunction) => {
   try {
-    const token = req.cookies?.refresh_token as string | undefined;
+    const bodyToken = (req.body as { refreshToken?: string } | undefined)?.refreshToken;
+    const token = (req.cookies?.refresh_token as string | undefined) || bodyToken;
     if (!token) {
       throw new AppError(401, ErrorCodes.UNAUTHORIZED, 'Refresh token required');
     }
@@ -172,7 +177,11 @@ router.post('/refresh', async (req: Request, res: Response, next: NextFunction) 
     const { accessToken, refreshToken } = authService.generateTokens(user._id.toString(), user.email);
     setAuthCookies(res, accessToken, refreshToken);
 
-    res.json({ user: { id: user._id, email: user.email } });
+    res.json({
+      user: { id: user._id, email: user.email },
+      accessToken,
+      refreshToken,
+    });
   } catch (err) {
     next(err);
   }
